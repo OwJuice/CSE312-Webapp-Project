@@ -1,0 +1,10 @@
+chat_messages = util.databaseHandler.retrieveAllMessages()
+replace_string = ""
+for chat in chat_messages:
+    current_message = chat["message"]
+    replace_string += "<p>" + current_message + "</p>\n"
+
+
+Then when reading index.html, replace the {{chat_placeholder}} with the replace string
+
+

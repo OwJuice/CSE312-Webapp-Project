@@ -33,7 +33,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             readfile.replace("{{visits}}", str(visits_counter))
             encoded_file = readfile.encode()
             length_of_file = str(len(encoded_file))
-            self.request.sendall(("HTTP/1.1 200 OK\r\nX-Content-Type-Options: nosniff\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: " + length_of_file + "\r\nSet-Cookie: visits=" + visits_str + "\r\n\r\n").encode() + encoded_file)
+            self.request.sendall(("HTTP/1.1 200 OK\r\nX-Content-Type-Options: nosniff\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + length_of_file + "\r\nSet-Cookie: visits=" + visits_str + "\r\n\r\n").encode() + encoded_file)
             #self.request.sendall(buildResponse("200 OK", "text/plain; charset=utf-8", readfile))
 
         #If path is to /public/functions.js, then serve that js code
@@ -48,6 +48,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
         #If path is to /public/style.css, then serve that css code
         elif (req_path == "/public/style.css"):
+        
             readfile = fileReader("./public/style.css")
             self.request.sendall(buildResponse("200 OK", "text/css; charset=utf-8", readfile))
 
@@ -65,28 +66,28 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         #     readfile = imageReader("public/image/" + image_name)
         #     self.request.sendall(buildResponse("200 OK", "image/jpeg", readfile))
 
-        elif (req_path == "/image/cat.jpg"):
-             readfile = imageReader("./image/cat.jpg")
+        elif (req_path == "/public/image/cat.jpg"):
+             readfile = imageReader("./public/image/cat.jpg")
              self.request.sendall(buildResponse("200 OK", "image/jpeg; charset=utf-8", readfile))
 
-        elif (req_path == "/image/dog.jpg"):
-             readfile = imageReader("./image/dog.jpg")
+        elif (req_path == "/public/image/dog.jpg"):
+             readfile = imageReader("./public/image/dog.jpg")
              self.request.sendall(buildResponse("200 OK", "image/jpeg; charset=utf-8", readfile))
 
-        elif (req_path == "/image/eagle.jpg"):
-             readfile = imageReader("./image/eagle.jpg")
+        elif (req_path == "/public/image/eagle.jpg"):
+             readfile = imageReader("./public/image/eagle.jpg")
              self.request.sendall(buildResponse("200 OK", "image/jpeg; charset=utf-8", readfile))
         
-        elif (req_path == "/image/elephant.jpg"):
-             readfile = imageReader("./image/elephant.jpg")
+        elif (req_path == "/public/image/elephant.jpg"):
+             readfile = imageReader("./public/image/elephant.jpg")
              self.request.sendall(buildResponse("200 OK", "image/jpeg; charset=utf-8", readfile))
 
-        elif (req_path == "/image/flamingo.jpg"):
-             readfile = imageReader("./image/flamingo.jpg")
+        elif (req_path == "/public/image/flamingo.jpg"):
+             readfile = imageReader("./public/image/flamingo.jpg")
              self.request.sendall(buildResponse("200 OK", "image/jpeg; charset=utf-8", readfile))           
 
-        elif (req_path == "/image/kitten.jpg"):
-             readfile = imageReader("./image/kitten.jpg")
+        elif (req_path == "/public/image/kitten.jpg"):
+             readfile = imageReader("./public/image/kitten.jpg")
              self.request.sendall(buildResponse("200 OK", "image/jpeg; charset=utf-8", readfile))     
 
         #Else, if path is anything that shouldn't received content, reuturn a 404 response with msg saying content wasn't found. (plain text)
@@ -116,7 +117,7 @@ def buildResponse(responseCode, mimeType, content) :
     return encoded_response
 
 #---fileReader---#
-#   A helper function that just takes in a file as a string, opens it and reads it
+#   A helper function that just takes in a file as a string, opens it, reads it, and returns the entire file as a string
 def fileReader(filename):
     f = open(filename, "r")
     readfile = f.read()
@@ -124,7 +125,7 @@ def fileReader(filename):
     return readfile
 
 #---imageReader---#
-#   A helper function that just takes in an image file as a string, opens it and reads it in bytes
+#   A helper function that just takes in an image file as a string, opens it, reads it in bytes, and returns the file in a byte array
 def imageReader(filename):
     f = open(filename, "rb")
     readfile = f.read()
