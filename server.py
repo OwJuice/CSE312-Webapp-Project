@@ -23,14 +23,13 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         req_headers = request.headers
         req_cookies = request.cookies
 
-        visits_counter = int(req_cookies.get("visits", 0))
-
         #Root path: If path is "/", then respond with the public/index.html file
         if (req_path == "/"):
             readfile = fileReader("./public/index.html")
+            visits_counter = int(req_cookies.get("visits", 0))
             visits_counter += 1 #Increment visits counter by 1
             visits_str = str(visits_counter)
-            readfile.replace("{{visits}}", str(visits_counter))
+            readfile = readfile.replace("{{visits}}", visits_str)
             encoded_file = readfile.encode()
             length_of_file = str(len(encoded_file))
             self.request.sendall(("HTTP/1.1 200 OK\r\nX-Content-Type-Options: nosniff\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + length_of_file + "\r\nSet-Cookie: visits=" + visits_str + "\r\n\r\n").encode() + encoded_file)
@@ -54,8 +53,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
         #If path is to /public/favicon.ico, then serve that icon
         elif (req_path == "/public/favicon.ico"):
-            readfile = fileReader("./public/favicon.ico")
-            self.request.sendall(buildResponse("200 OK", "image/x-icon", readfile))
+            readfile = imageReader("./public/favicon.ico")
+            self.request.sendall(buildImageResponse("200 OK", "image/x-icon", readfile))
 
         # #If path is to an image path, read the image file and determine what image to send
         # #Use a variable for the image name so we can serve multiple images
@@ -68,27 +67,28 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
         elif (req_path == "/public/image/cat.jpg"):
              readfile = imageReader("./public/image/cat.jpg")
-             self.request.sendall(buildResponse("200 OK", "image/jpeg; charset=utf-8", readfile))
+             self.request.sendall(buildImageResponse("200 OK", "image/jpeg", readfile))
 
         elif (req_path == "/public/image/dog.jpg"):
              readfile = imageReader("./public/image/dog.jpg")
-             self.request.sendall(buildResponse("200 OK", "image/jpeg; charset=utf-8", readfile))
+             self.request.sendall(buildImageResponse("200 OK", "image/jpeg", readfile))
 
         elif (req_path == "/public/image/eagle.jpg"):
              readfile = imageReader("./public/image/eagle.jpg")
-             self.request.sendall(buildResponse("200 OK", "image/jpeg; charset=utf-8", readfile))
+             print("EAGLE IMAGES RECIEVED")
+             self.request.sendall(buildImageResponse("200 OK", "image/jpeg", readfile))
         
         elif (req_path == "/public/image/elephant.jpg"):
              readfile = imageReader("./public/image/elephant.jpg")
-             self.request.sendall(buildResponse("200 OK", "image/jpeg; charset=utf-8", readfile))
+             self.request.sendall(buildImageResponse("200 OK", "image/jpeg", readfile))
 
         elif (req_path == "/public/image/flamingo.jpg"):
              readfile = imageReader("./public/image/flamingo.jpg")
-             self.request.sendall(buildResponse("200 OK", "image/jpeg; charset=utf-8", readfile))           
+             self.request.sendall(buildImageResponse("200 OK", "image/jpeg", readfile))           
 
         elif (req_path == "/public/image/kitten.jpg"):
              readfile = imageReader("./public/image/kitten.jpg")
-             self.request.sendall(buildResponse("200 OK", "image/jpeg; charset=utf-8", readfile))     
+             self.request.sendall(buildImageResponse("200 OK", "image/jpeg", readfile))     
 
         #Else, if path is anything that shouldn't received content, reuturn a 404 response with msg saying content wasn't found. (plain text)
         else:
@@ -100,7 +100,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 #---buildResponse Function---#
 #   A helper function to build responses to be sent from the client to the server after receiving a request
 #   Takes a response code, a MIME type, and the content as strings
-#   Decodes those arguments, finds the length of the data, and puts together the whole response
+#   Decodes those arguments, finds the length of the data, and puts together the whole response and returns as bytes
 #   Currently only works with 200 and 404 responses
 #---#
 def buildResponse(responseCode, mimeType, content) :
@@ -115,6 +115,17 @@ def buildResponse(responseCode, mimeType, content) :
     encoded_response = response.encode()
 
     return encoded_response
+
+def buildImageResponse(responseCode, mimeType, content) :
+    content_len = len(content)
+    response = "HTTP/1.1 " + responseCode + "\r\n"
+    response += "X-Content-Type-Options: nosniff\r\n"
+    response += "Content-Type: " + mimeType + "\r\n"
+    response += "Content-Length: " + str(content_len)
+    response += "\r\n\r\n"
+    response = response.encode() + content
+
+    return response
 
 #---fileReader---#
 #   A helper function that just takes in a file as a string, opens it, reads it, and returns the entire file as a string
