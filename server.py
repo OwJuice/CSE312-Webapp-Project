@@ -1,4 +1,8 @@
 import socketserver
+import util.dbHandler as dbHandler 
+#Importing as dbHandler will prevent me from having to type util.dbHandler.<function> everytime I wanna use a function from that file
+# so I can just do dbHandler.<function>. I could have imported all (*), but this would reduce code clarity as I wouldn't know where a function
+# came from when calling it.
 from util.request import Request
 
 
@@ -32,7 +36,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             readfile = readfile.replace("{{visits}}", visits_str)
             encoded_file = readfile.encode()
             length_of_file = str(len(encoded_file))
-            self.request.sendall(("HTTP/1.1 200 OK\r\nX-Content-Type-Options: nosniff\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + length_of_file + "\r\nSet-Cookie: visits=" + visits_str + "\r\n\r\n").encode() + encoded_file)
+            self.request.sendall(("HTTP/1.1 200 OK\r\nX-Content-Type-Options: nosniff\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + length_of_file + "\r\nSet-Cookie: visits=" + visits_str + "; Max-Age=3600\r\n\r\n").encode() + encoded_file)
             #self.request.sendall(buildResponse("200 OK", "text/plain; charset=utf-8", readfile))
 
         #If path is to /public/functions.js, then serve that js code
@@ -47,7 +51,6 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
         #If path is to /public/style.css, then serve that css code
         elif (req_path == "/public/style.css"):
-        
             readfile = fileReader("./public/style.css")
             self.request.sendall(buildResponse("200 OK", "text/css; charset=utf-8", readfile))
 
@@ -55,6 +58,14 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         elif (req_path == "/public/favicon.ico"):
             readfile = imageReader("./public/favicon.ico")
             self.request.sendall(buildImageResponse("200 OK", "image/x-icon", readfile))
+
+        #If path is to /chat-messages (POST request), then store the incoming message in the database
+        #The message sent, the username, and a unique id for the message is stored.
+        elif (req_path == "/chat-messages"):
+            if (req_method == "POST"):
+                dbHandler.insertChatMessage(req_body)
+                self.request.sendall(buildResponse("200 OK", "text/plain; charset=utf-8", "Message Sent Successfully"))
+        
 
         # #If path is to an image path, read the image file and determine what image to send
         # #Use a variable for the image name so we can serve multiple images
@@ -80,6 +91,10 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         
         elif (req_path == "/public/image/elephant.jpg"):
              readfile = imageReader("./public/image/elephant.jpg")
+             self.request.sendall(buildImageResponse("200 OK", "image/jpeg", readfile))
+
+        elif (req_path == "/public/image/elephant-small.jpg"):
+             readfile = imageReader("./public/image/elephant-small.jpg")
              self.request.sendall(buildImageResponse("200 OK", "image/jpeg", readfile))
 
         elif (req_path == "/public/image/flamingo.jpg"):
@@ -116,6 +131,9 @@ def buildResponse(responseCode, mimeType, content) :
 
     return encoded_response
 
+#---buildImageResponse Function---#
+#   Same as buildResponse, except it doesn't encode the content because images are already in bytes
+#---#
 def buildImageResponse(responseCode, mimeType, content) :
     content_len = len(content)
     response = "HTTP/1.1 " + responseCode + "\r\n"
