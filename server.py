@@ -63,6 +63,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         #The message sent, the username, and a unique id for the message is stored.
         elif (req_path == "/chat-messages"):
             if (req_method == "POST"):
+                #TODO: Escape HTML here before inserting msg into database
                 dbHandler.insertChatMessage(req_body)
                 self.request.sendall(buildResponse("200 OK", "text/plain; charset=utf-8", "Message Sent Successfully"))
             if (req_method == "GET"):
