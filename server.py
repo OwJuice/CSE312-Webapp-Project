@@ -65,7 +65,16 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             if (req_method == "POST"):
                 dbHandler.insertChatMessage(req_body)
                 self.request.sendall(buildResponse("200 OK", "text/plain; charset=utf-8", "Message Sent Successfully"))
-        
+            if (req_method == "GET"):
+                chat_messages = dbHandler.getAllChatMessages() #chat_messages is a list of json objects
+                self.request.sendall(buildResponse("200 OK", "application/json; charset=utf-8", chat_messages))
+                # replace_string = ""
+                # for chat_message in chat_messages:
+                #     current_message = chat_message["message"] #Now curent_message contains the actual message
+                #     replace_string += "<p>" + current_message + "</p>\n"
+
+
+                
 
         # #If path is to an image path, read the image file and determine what image to send
         # #Use a variable for the image name so we can serve multiple images
