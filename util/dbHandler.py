@@ -20,8 +20,8 @@ def insertChatMessage(message):
         db["message_counter"].insert_one({"_id": "message_id", "value": 0})
     
     chat_collection = db["chat"]
-    decoded_message = message.decode() #This is a JSON string. We need JSON.loads()
-    python_message_dictionary = json.loads(decoded_message)
+    #message is a JSON string. We need JSON.loads() to turn it python dictionary compatible
+    python_message_dictionary = json.loads(message)
     python_message = python_message_dictionary['message']
     message_id = get_next_message_id()
     chat_collection.insert_one({"_id": message_id, "username":"Guest","message":python_message}) #Mongodb automatically creates unique IDs for each message

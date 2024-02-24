@@ -64,7 +64,10 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         elif (req_path == "/chat-messages"):
             if (req_method == "POST"):
                 #TODO: Escape HTML here before inserting msg into database
-                dbHandler.insertChatMessage(req_body)
+                chat_message = req_body.decode()
+                safe_message = htmlInjectionPreventer(chat_message)
+
+                dbHandler.insertChatMessage(safe_message)
                 self.request.sendall(buildResponse("200 OK", "text/plain; charset=utf-8", "Message Sent Successfully"))
             if (req_method == "GET"):
                 chat_messages = dbHandler.getAllChatMessages() #chat_messages is a list of json objects
@@ -170,6 +173,14 @@ def imageReader(filename):
     readfile = f.read()
 
     return readfile
+
+#---htmlInjectionPreventer---#
+#   A helper function that takes in a string and returns a string that escapes html characters
+def htmlInjectionPreventer(string):
+    safe_string = string.replace("&", "&ammp")
+    safe_string = safe_string.replace("<", "&lt")
+    safe_string = safe_string.replace(">", "&gt")
+    return safe_string
         
 
 def main():
