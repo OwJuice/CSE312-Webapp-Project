@@ -68,7 +68,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 safe_message = htmlInjectionPreventer(chat_message)
 
                 message_document = dbHandler.insertChatMessage(safe_message)
-                self.request.sendall(buildResponse("201 Created", "text/plain; charset=utf-8", message_document))
+                self.request.sendall(buildResponse("201 Created", "application/json; charset=utf-8", message_document))
+                
             if (req_method == "GET"):
                 chat_messages = dbHandler.getAllChatMessages() #chat_messages is a list of json objects
                 self.request.sendall(buildResponse("200 OK", "application/json; charset=utf-8", chat_messages))
@@ -79,8 +80,29 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         
         #If path is to /chat-messages/<id>, then it is a get request where the body of the response will be the JSON object containing the
         # requested path
-        
+        elif ("/chat-messages/" in req_path):
+            #print("--------------THE REQPATH IS: " + str(req_path))
+            stripped_path = req_path.strip("/")
+            message_path = stripped_path.split("/") #Message_path is a string at this point, including the id
+            #print("--------------THE MESSAGE_PATH IS: " + str(message_path))
 
+            #Try to convert the message to an int, if it doesn't work, then send a 404 error because the id wasn't int compatible
+            try:
+                message_id = int(message_path[1])
+                #print("--------------THE MESSAGE_ID IS: " + str(message_id))
+            except ValueError:
+                # Handle the case where message_id_str is not a valid integer
+                self.request.sendall(buildResponse("404 Not Found", "text/plain; charset=utf-8", "Message ID is not valid >:("))
+            else:
+                #Now we know that the message id is a valid int
+                #print("--------------THE REQPATH AFTER IS: " + str(req_path))
+                target_message = dbHandler.getOneChatMessage(message_id)
+                if target_message != None:
+                    self.request.sendall(buildResponse("200 OK", "application/json; charset=utf-8", target_message))
+                else:
+                    self.request.sendall(buildResponse("404 Not Found", "text/plain; charset=utf-8", "Message not found :("))
+            #else:
+            #    self.request.sendall(buildResponse("404 Not Found", "text/plain; charset=utf-8", "Message not found :("))
                 
 
         # #If path is to an image path, read the image file and determine what image to send

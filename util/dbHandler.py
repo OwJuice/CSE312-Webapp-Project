@@ -27,7 +27,8 @@ def insertChatMessage(message):
     chat_collection.insert_one({"_id": message_id, "username":"Guest","message":python_message}) #Mongodb automatically creates unique IDs for each message
     
     #Return the chat message that we just inserted into the database. (AO1 purposes)
-    return {"_id": message_id, "username":"Guest","message":python_message}
+    json_message = json.dumps({"_id": message_id, "username":"Guest","message":python_message})
+    return json_message
 
 def getAllChatMessages():
     chat_collection = db["chat"]
@@ -50,8 +51,18 @@ def getAllChatMessages():
         }
 
         list_of_messages.append(chat_message_dictionary)
-    print(list_of_messages)
+    #print(list_of_messages)
     json_messages = json.dumps(list_of_messages)
 
     #return json.dumps(documents, default=json_util.default)
     return json_messages
+
+def getOneChatMessage(id):
+    chat_collection = db["chat"]
+    query = {"_id": id}
+    target_message = chat_collection.find_one(query)
+    if target_message:
+        json_message = json.dumps(target_message)
+        return json_message
+    else:
+        return None
