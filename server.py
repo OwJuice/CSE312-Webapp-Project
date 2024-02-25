@@ -63,12 +63,12 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         #The message sent, the username, and a unique id for the message is stored.
         elif (req_path == "/chat-messages"):
             if (req_method == "POST"):
-                #TODO: Escape HTML here before inserting msg into database
+                #Escape HTML before inserting msg into database
                 chat_message = req_body.decode()
                 safe_message = htmlInjectionPreventer(chat_message)
 
-                dbHandler.insertChatMessage(safe_message)
-                self.request.sendall(buildResponse("200 OK", "text/plain; charset=utf-8", "Message Sent Successfully"))
+                message_document = dbHandler.insertChatMessage(safe_message)
+                self.request.sendall(buildResponse("201 Created", "text/plain; charset=utf-8", message_document))
             if (req_method == "GET"):
                 chat_messages = dbHandler.getAllChatMessages() #chat_messages is a list of json objects
                 self.request.sendall(buildResponse("200 OK", "application/json; charset=utf-8", chat_messages))
@@ -76,7 +76,10 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 # for chat_message in chat_messages:
                 #     current_message = chat_message["message"] #Now curent_message contains the actual message
                 #     replace_string += "<p>" + current_message + "</p>\n"
-
+        
+        #If path is to /chat-messages/<id>, then it is a get request where the body of the response will be the JSON object containing the
+        # requested path
+        
 
                 
 
