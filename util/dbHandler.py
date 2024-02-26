@@ -66,3 +66,9 @@ def getOneChatMessage(id):
         return json_message
     else:
         return None
+    
+def deleteChatMessage(id):
+    chat_collection = db["chat"]
+    query = {"_id": id}
+    chat_collection.delete_one(query)
+    return None

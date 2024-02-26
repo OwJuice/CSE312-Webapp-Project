@@ -30,9 +30,11 @@ function deleteMessage(messageId) {
 }
 
 function chatMessageHTML(messageJSON) {
+    console.log("messageJSON:", messageJSON);
     const username = messageJSON.username;
     const message = messageJSON.message;
-    const messageId = messageJSON.id;
+    const messageId = messageJSON._id;
+    console.log("messageId:", messageId);
     let messageHTML = "<br><button onclick='deleteMessage(\"" + messageId + "\")'>X</button> ";
     messageHTML += "<span id='message_" + messageId + "'><b>" + username + "</b>: " + message + "</span>";
     return messageHTML;
