@@ -83,33 +83,41 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         #If path is to /chat-messages/<id>, and method is GET request, the body of the response will be the JSON object containing the
         # requested path.
         #If method is DELETE request, then delete the document from the database, no body in the response.
+        #If method is PUT request, then the body of request will be JSON object message .
         elif ("/chat-messages/" in req_path):
-            print("--------------THE REQPATH IS: " + str(req_path))
+            #print("--------------THE REQPATH IS: " + str(req_path))
             stripped_path = req_path.strip("/")
             message_path = stripped_path.split("/") #Message_path is a string at this point, including the id
-            print("--------------THE MESSAGE_PATH IS: " + str(message_path))
+            #print("--------------THE MESSAGE_PATH IS: " + str(message_path))
 
             #Try to convert the message to an int, if it doesn't work, then send a 404 error because the id wasn't int compatible
             try:
                 message_id = int(message_path[1])
-                print("--------------THE MESSAGE_ID IS: " + str(message_id))
+                #print("--------------THE MESSAGE_ID IS: " + str(message_id))
             except ValueError:
                 # Handle the case where message_id_str is not a valid integer
                 self.request.sendall(buildResponse("404 Not Found", "text/plain; charset=utf-8", "Message ID is not valid >:("))
             else:
                 #Now we know that the message id is a valid int. Next, find out if the request is a GET or DELETE
                 if (req_method == "GET"):
-                    print("--------------THE REQPATH AFTER IS: " + str(req_path))
+                    #print("--------------THE REQPATH TO GET IS: " + str(req_path))
                     target_message = dbHandler.getOneChatMessage(message_id)
                     if target_message != None:
                         self.request.sendall(buildResponse("200 OK", "application/json; charset=utf-8", target_message))
                     else:
                         self.request.sendall(buildResponse("404 Not Found", "text/plain; charset=utf-8", "Message not found :("))
                 elif (req_method == "DELETE"):
-                    print("************THE MESSAGE_ID TO DELETE IS: " + str(message_id))
+                    #print("************THE MESSAGE_ID TO DELETE IS: " + str(message_id))
                     dbHandler.deleteChatMessage(message_id)
                     self.request.sendall("HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n".encode())
-
+                #If PUT request, then update the given ID from the request path's document with the username AND message (contained in body of request)
+                elif (req_method == "PUT"):
+                    #print("************THE MESSAGE_ID TO PUT IS: " + str(message_id))
+                    update_check = dbHandler.update_document(message_id, req_body)
+                    if update_check is True:
+                        self.request.sendall(buildResponse("200 OK", "application/json; charset=utf-8", target_message))
+                    else:
+                        self.request.sendall(buildResponse("404 Not Found", "text/plain; charset=utf-8", "Message not found :("))
                 
 
         # #If path is to an image path, read the image file and determine what image to send

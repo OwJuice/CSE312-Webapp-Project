@@ -72,3 +72,28 @@ def deleteChatMessage(id):
     query = {"_id": id}
     chat_collection.delete_one(query)
     return None
+
+def update_document(id, new_message_document):
+    # Check if the document with the given ID exists
+    chat_collection = db["chat"]
+    query = {"_id": id}
+    old_message = chat_collection.find_one(query)
+    if old_message is None:
+        return False  # Document message not found
+    else:
+        # Process the incoming document data (bytes) by decoding bytes to string
+        if isinstance(new_message_document, bytes):
+            new_message_document = new_message_document.decode('utf-8')
+
+        # Parse the JSON string into a dictionary
+        try:
+            new_message_document = json.loads(new_message_document)
+        except json.JSONDecodeError:
+            # Handle invalid JSON format
+            return False
+
+        # Update the existing document with the new message document
+        new_message = new_message_document["message"]
+        new_username = new_message_document["username"]
+        chat_collection.update_one({"_id": id}, {"$set": {"message": new_message, "username": new_username}})
+        return True  # Document message updated successfully
