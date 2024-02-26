@@ -115,7 +115,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                     #print("************THE MESSAGE_ID TO PUT IS: " + str(message_id))
                     update_check = dbHandler.update_document(message_id, req_body)
                     if update_check is True:
-                        self.request.sendall(buildResponse("200 OK", "application/json; charset=utf-8", target_message))
+                        updated_message = dbHandler.getOneChatMessage(message_id)
+                        self.request.sendall(buildResponse("200 OK", "application/json; charset=utf-8", updated_message))
                     else:
                         self.request.sendall(buildResponse("404 Not Found", "text/plain; charset=utf-8", "Message not found :("))
                 
