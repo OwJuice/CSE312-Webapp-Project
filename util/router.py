@@ -8,11 +8,11 @@ class Router:
         print("I'm an object with no parameters :)")
 
     #---add_route Method---#
-    #  -Parameters: A The HTTP method (str), the path (str), and a function that takes a Request object (from util/request.py)
-    #  -Return: Byte array that will be the response to be sent to client
+    #  -Parameters: A The HTTP method (str), the path (str), and a function that takes a Request object (from util/request.py) and that returns bytes of response
+    #  -Return: Nothing
     #  -Objective: Adds a route to a router
     #---#
-    def add_route(self, http_method: str, path: str, request: Request):
+    def add_route(self, http_method: str, path: str, function):
         return
     
     #---route_request Method---#
