@@ -4,6 +4,22 @@ import util.dbHandler as dbHandler
 # so I can just do dbHandler.<function>. I could have imported all (*), but this would reduce code clarity as I wouldn't know where a function
 # came from when calling it.
 from util.request import Request
+from util.router import Router
+
+
+#Router:
+router = Router()
+#router.add_route(method: "GET", path: "/$", server_root()) # If path is "/" then 404 never gets hit
+
+#----We can add all our routes:
+#router.add_route(method: "GET", path: "/$", server_root())
+#router.add_route(method: "GET", path: "/public/functions.js", server_js())
+#router.add_route(method: "GET", path: "/public/image/.", server_js()) #Use regex to save time instead of $ to hardcode every image
+#router.add_route(method: "GET", path: "/chat-message/.", server_js()) #With ID message so only do that message (DO THIS WITH REGEX)
+#router.add_route(method: "GET", path: "/chat-message/", server_js()) #No ID so serve every chat message
+
+#These parameter values should be stored in a data structure. Maybe Path class to store those values or a list. Then you can iterate
+#over that data structure to see if paths match request.
 
 
 class MyTCPHandler(socketserver.BaseRequestHandler):
@@ -16,6 +32,10 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         print("--- end of data ---\n\n")
         request = Request(received_data)
 
+        #GETTING RESPONSE
+        #response = router.route_request(request)
+        #self.request.sendall(response)
+
         # TODO: Parse the HTTP request and use self.request.sendall(response) to send your response
         # NOTE: .decode converts bytes to string, .encode converts string to bytes
         # NOTE: sendall method sends information back to the client
@@ -26,6 +46,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         req_http = request.http_version
         req_headers = request.headers
         req_cookies = request.cookies
+
 
         print("************THE MESSAGE_PATH IN THE BEGINNING IS: " + str(req_path))
 

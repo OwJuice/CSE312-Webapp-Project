@@ -1,4 +1,4 @@
-from request import Request
+from util.request import Request
 
 #---extract_credentials Method---#
 #  -Parameters: A request object (from util/request.py)
