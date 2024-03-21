@@ -5,10 +5,13 @@ import util.dbHandler as dbHandler
 # came from when calling it.
 from util.request import Request
 from util.router import Router
+from util.requestHandler import *
 
 
 #Router:
 router = Router()
+router.add_route("post", "/register$", server_register)
+router.add_route("post", "/login$", server_login)
 #router.add_route(method: "GET", path: "/$", server_root()) # If path is "/" then 404 never gets hit
 
 #----We can add all our routes:
@@ -21,6 +24,7 @@ router = Router()
 #These parameter values should be stored in a data structure. Maybe Path class to store those values or a list. Then you can iterate
 #over that data structure to see if paths match request.
 
+#TODO: Need to move all functions into the router. We call sendall after calling route_request that helps build the response. Each function for paths should build response in requestHandler
 
 class MyTCPHandler(socketserver.BaseRequestHandler):
 
