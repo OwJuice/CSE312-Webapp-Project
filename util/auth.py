@@ -18,9 +18,9 @@ def extract_credentials(request: Request):
     for key_val_pair in key_val_pairs:
         key, val = key_val_pair.split("=")
 
-        if key == "username":
+        if key == "username_reg" or key == "username_login":
             username = val
-        elif key == "password":
+        elif key == "password_reg" or key == "password_login":
             password = val
 
     credential_list = [username, password]
