@@ -14,7 +14,7 @@ def extract_credentials(request: Request):
     #Fully decode the whole body before parsing.
     fully_decoded_body_string = decode_percent_encoding(body_string)
 
-    key_val_pairs = body_string.split("&")
+    key_val_pairs = fully_decoded_body_string.split("&")
     for key_val_pair in key_val_pairs:
         key, val = key_val_pair.split("=")
 
