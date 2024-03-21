@@ -58,7 +58,7 @@ class Router:
         requestHandlerFunction = self.routes.get(route_key)
         if requestHandlerFunction:
             stored_method, stored_path = route_key
-            if re.match(req_path, stored_path):
+            if re.match(stored_path, req_path):
                 return requestHandlerFunction(request)
         else:
             #Send 404 response
