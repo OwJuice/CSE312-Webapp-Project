@@ -16,7 +16,12 @@ def extract_credentials(request: Request):
 
     key_val_pairs = fully_decoded_body_string.split("&")
     for key_val_pair in key_val_pairs:
-        key, val = key_val_pair.split("=")
+        # Add error handling for cases where key-value pair is not formatted as expected
+        try:
+            key, val = key_val_pair.split("=")
+        except ValueError:
+            # Skip if key-value pair cannot be split into exactly two parts
+            continue
 
         if key == "username_reg" or key == "username_login":
             username = val
