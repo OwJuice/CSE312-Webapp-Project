@@ -1,4 +1,5 @@
 from util.request import Request
+import re
 
 #---extract_credentials Method---#
 #  -Parameters: A request object (from util/request.py)
@@ -40,5 +41,31 @@ def decode_percent_encoding(value):
 #       5. The password contains at least 1 of the 12 special characters ('!', '@', '#', '$', '%', '^', '&', '(', ')', '-', '_', '=')
 #       6. The password does not contain any invalid characters (eg. any character that is not an alphanumeric or one of the 12 special characters)
 #---#
-def validate_password():
-    return
+def validate_password(password: str):
+    # Criteria 1: Length of the password is at least 8
+    if len(password) < 8:
+        return False
+
+    # Criteria 2: Contains at least 1 lowercase letter
+    if not re.search(r'[a-z]', password):
+        return False
+
+    # Criteria 3: Contains at least 1 uppercase letter
+    if not re.search(r'[A-Z]', password):
+        return False
+
+    # Criteria 4: Contains at least 1 number
+    if not re.search(r'\d', password):
+        return False
+
+    # Criteria 5: Contains at least 1 of the 12 special characters
+    special_characters = r'[!@#$%^&()-_=]'
+    if not re.search(special_characters, password):
+        return False
+
+    # Criteria 6: Does not contain any invalid characters
+    if not all(char.isalnum() or char in special_characters for char in password):
+        return False
+
+    # All criteria met, return True
+    return True
