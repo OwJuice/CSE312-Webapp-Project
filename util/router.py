@@ -38,7 +38,7 @@ class Router:
     #   The method is called on server start up.
     #---#
     def add_route(self, http_method: str, path: str, function):
-        route_key = (http_method, re.compile(path))
+        route_key = (http_method, path)
         self.routes[route_key] = function
         return
     
@@ -57,7 +57,9 @@ class Router:
         #Get the function associated with the request and call it if it exists. If it doesn't exist, send a 404 response
         requestHandlerFunction = self.routes.get(route_key)
         if requestHandlerFunction:
-            return requestHandlerFunction(request)
+            stored_method, stored_path = route_key
+            if re.match(req_path, stored_path):
+                return requestHandlerFunction(request)
         else:
             #Send 404 response
             return buildResponse("404 Not Found", "text/plain; charset=utf-8", "The requested content does not exist :(")
