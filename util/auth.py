@@ -1,5 +1,4 @@
 from util.request import Request
-import re
 
 #---extract_credentials Method---#
 #  -Parameters: A request object (from util/request.py)
@@ -42,31 +41,40 @@ def decode_percent_encoding(value):
 #       5. The password contains at least 1 of the 12 special characters ('!', '@', '#', '$', '%', '^', '&', '(', ')', '-', '_', '=')
 #       6. The password does not contain any invalid characters (eg. any character that is not an alphanumeric or one of the 12 special characters)
 #---#
-def validate_password(password: str):
+def validate_password(password):
     # Criteria 1: Length of the password is at least 8
     if len(password) < 8:
         return False
 
-    # Criteria 2: Contains at least 1 lowercase letter
-    if not re.search(r'[a-z]', password):
-        return False
+    lowercase_present = False
+    uppercase_present = False
+    number_present = False
+    special_character_present = False
 
-    # Criteria 3: Contains at least 1 uppercase letter
-    if not re.search(r'[A-Z]', password):
-        return False
+    # Iterate over each character in the password
+    for char in password:
+        # Criteria 2: Check for lowercase letter
+        if char.islower():
+            lowercase_present = True
 
-    # Criteria 4: Contains at least 1 number
-    if not re.search(r'\d', password):
-        return False
+        # Criteria 3: Check for uppercase letter
+        if char.isupper():
+            uppercase_present = True
 
-    # Criteria 5: Contains at least 1 of the 12 special characters
-    special_characters = r'[!@#$%^&()-_=]'
-    if not re.search(special_characters, password):
-        return False
+        # Criteria 4: Check for number
+        if char.isdigit():
+            number_present = True
 
-    # Criteria 6: Does not contain any invalid characters
-    if not all(char.isalnum() or char in special_characters for char in password):
-        return False
+        # Criteria 5: Check for special character
+        if char in "!@#$%^&()-_=":
+            special_character_present = True
 
-    # All criteria met, return True
-    return True
+        # Criteria 6: Check for invalid characters
+        if not (char.isalnum() or char in "!@#$%^&()-_="):
+            return False
+
+    # Check if all criteria are met
+    if lowercase_present and uppercase_present and number_present and special_character_present:
+        return True
+    else:
+        return False
