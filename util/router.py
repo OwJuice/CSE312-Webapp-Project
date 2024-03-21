@@ -1,5 +1,6 @@
 from util.request import Request
 from util.requestHandler import *
+from server import buildResponse
 import re
 
 class Router:
@@ -18,7 +19,7 @@ class Router:
     #   The method is called on server start up.
     #---#
     def add_route(self, http_method: str, path: str, function):
-        route_key = (http_method, path)
+        route_key = (http_method, re.compile(path))
         self.routes[route_key] = function
         return
     
@@ -40,6 +41,6 @@ class Router:
             requestHandlerFunction(request)
         else:
             #Send 404 response
-            return
+            return buildResponse("404 Not Found", "text/plain; charset=utf-8", "The requested content does not exist :(")
         
         return
