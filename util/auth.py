@@ -6,11 +6,28 @@ from util.request import Request
 #  -Objective:
 #---#
 def extract_credentials(request: Request):
-    credential_list = []
-    
-    return
+    username = None
+    password = None
+    req_body = request.body
+    body_string = req_body.decode()
 
+    key_val_pairs = body_string.split("&")
+    for key_val_pair in key_val_pairs:
+        key, val = key_val_pair.split("=")
+        #Decode percent encoded values
+        decoded_val = decode_percent_encoding(val)
 
+        if key == "username":
+            username = decoded_val
+        elif key == "password":
+            password = decoded_val
+
+    credential_list = [username, password]
+    return credential_list
+
+def decode_percent_encoding(value):
+    # Replace percent-encoded characters with their decoded equivalents
+    decoded_value = value.replace('%21', '!').replace('%40', '@').replace('%23', '#').replace('%24', '$').replace('%25', '%').replace('%5E', '^').replace('%26', '&').replace('%28', '(').replace('%29', ')').replace('%2D', '-').replace('%5F', '_').replace('%3D', '=')
 
 #---validate_password Method---#
 #  -Parameters: A string representing a password
