@@ -11,16 +11,17 @@ def extract_credentials(request: Request):
     req_body = request.body
     body_string = req_body.decode()
 
+    #Fully decode the whole body before parsing.
+    fully_decoded_body_string = decode_percent_encoding(body_string)
+
     key_val_pairs = body_string.split("&")
     for key_val_pair in key_val_pairs:
         key, val = key_val_pair.split("=")
-        #Decode percent encoded values
-        decoded_val = decode_percent_encoding(val)
 
         if key == "username":
-            username = decoded_val
+            username = val
         elif key == "password":
-            password = decoded_val
+            password = val
 
     credential_list = [username, password]
     return credential_list
