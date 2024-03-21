@@ -1,7 +1,26 @@
 from util.request import Request
 from util.requestHandler import *
-from server import buildResponse
 import re
+
+#---buildResponse Function---#
+#   A helper function to build responses to be sent from the client to the server after receiving a request
+#   Takes a response code, a MIME type, and the content as strings
+#   Decodes those arguments, finds the length of the data, and puts together the whole response and returns as bytes
+#   Currently only works with 200 and 404 responses
+#---#
+def buildResponse(responseCode, mimeType, content) :
+    content_bytes = content.encode()
+    content_len = len(content_bytes)
+    response = "HTTP/1.1 " + responseCode + "\r\n"
+    response += "X-Content-Type-Options: nosniff\r\n"
+    response += "Content-Type: " + mimeType + "\r\n"    # Concatenate: "; charset=utf-8" after the mimeType for text
+    response += "Content-Length: " + str(content_len)
+    response += "\r\n\r\n"
+    response += content
+    encoded_response = response.encode()
+
+    return encoded_response
+
 
 class Router:
 
@@ -44,3 +63,4 @@ class Router:
             return buildResponse("404 Not Found", "text/plain; charset=utf-8", "The requested content does not exist :(")
         
         return
+    
