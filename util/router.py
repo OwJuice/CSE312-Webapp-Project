@@ -57,7 +57,7 @@ class Router:
         #Get the function associated with the request and call it if it exists. If it doesn't exist, send a 404 response
         requestHandlerFunction = self.routes.get(route_key)
         if requestHandlerFunction:
-            requestHandlerFunction(request)
+            return requestHandlerFunction(request)
         else:
             #Send 404 response
             return buildResponse("404 Not Found", "text/plain; charset=utf-8", "The requested content does not exist :(")
