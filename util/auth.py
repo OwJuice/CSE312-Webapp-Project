@@ -29,6 +29,7 @@ def extract_credentials(request: Request):
 def decode_percent_encoding(value):
     # Replace percent-encoded characters with their decoded equivalents
     decoded_value = value.replace('%21', '!').replace('%40', '@').replace('%23', '#').replace('%24', '$').replace('%25', '%').replace('%5E', '^').replace('%26', '&').replace('%28', '(').replace('%29', ')').replace('%2D', '-').replace('%5F', '_').replace('%3D', '=')
+    return decoded_value
 
 #---validate_password Method---#
 #  -Parameters: A string representing a password
