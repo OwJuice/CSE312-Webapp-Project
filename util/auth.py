@@ -11,22 +11,14 @@ def extract_credentials(request: Request):
     req_body = request.body
     body_string = req_body.decode()
 
-    #Fully decode the whole body before parsing.
-    fully_decoded_body_string = decode_percent_encoding(body_string)
-
-    key_val_pairs = fully_decoded_body_string.split("&")
+    key_val_pairs = body_string.split("&")
     for key_val_pair in key_val_pairs:
-        # Add error handling for cases where key-value pair is not formatted as expected
-        try:
-            key, val = key_val_pair.split("=")
-        except ValueError:
-            # Skip if key-value pair cannot be split into exactly two parts
-            continue
+        key, val = key_val_pair.split("=")
 
         if key == "username_reg" or key == "username_login":
             username = val
         elif key == "password_reg" or key == "password_login":
-            password = val
+            password = decode_percent_encoding(val)
 
     credential_list = [username, password]
     return credential_list
