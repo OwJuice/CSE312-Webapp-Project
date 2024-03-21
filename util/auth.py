@@ -5,7 +5,9 @@ from util.request import Request
 #  -Return: List of 2 elements (A username and a password both strs)
 #  -Objective:
 #---#
-def extract_credentials():
+def extract_credentials(request: Request):
+    credential_list = []
+    
     return
 
 

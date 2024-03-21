@@ -54,15 +54,23 @@ class Router:
         req_path = request.path #Use as part of key lookup
         route_key = (req_method, req_path)
 
-        #Get the function associated with the request and call it if it exists. If it doesn't exist, send a 404 response
-        requestHandlerFunction = self.routes.get(route_key)
-        if requestHandlerFunction:
-            stored_method, stored_path = route_key
-            if re.match(stored_path, req_path):
+        # Iterate through stored routes to find a matching route
+        for stored_method, stored_path in self.routes:
+            # Check if the request method matches and if the stored_path regex matches the requested path
+            if req_method == stored_method and re.match(stored_path, req_path):
+                # Call the corresponding handler function
+                requestHandlerFunction = self.routes[(stored_method, stored_path)]
                 return requestHandlerFunction(request)
-        else:
-            #Send 404 response
-            return buildResponse("404 Not Found", "text/plain; charset=utf-8", "The requested content does not exist :(")
+
+        # #Get the function associated with the request and call it if it exists. If it doesn't exist, send a 404 response
+        # requestHandlerFunction = self.routes.get(route_key)
+        # if requestHandlerFunction:
+        #     stored_method, stored_path = route_key
+        #     if re.match(stored_path, req_path):
+        #         return requestHandlerFunction(request)
+        # else:
+        #     #Send 404 response
+        return buildResponse("404 Not Found", "text/plain; charset=utf-8", "The requested content does not exist :(")
         
-        return
+        #return
     
