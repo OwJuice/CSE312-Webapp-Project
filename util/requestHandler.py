@@ -1,6 +1,14 @@
 from util.request import Request
 import util.dbHandler as dbHandler
+#Importing as dbHandler will prevent me from having to type util.dbHandler.<function> everytime I wanna use a function from that file
+# so I can just do dbHandler.<function>. I could have imported all (*), but this would reduce code clarity as I wouldn't know where a function
+# came from when calling it.
 import os
+import util.auth as auth
+import secrets
+import hashlib
+import bcrypt
+
 
 #===requestHandler.py===#
 #  -This file holds functions that handle building responses to requests.
@@ -25,7 +33,7 @@ def buildResponse(responseCode, mimeType, content) :
 
     return encoded_response
 
-#---buildImageResponse Function---#
+#---buildImageResponse Functon---#
 #   Same as buildResponse, except it doesn't encode the content because images are already in bytes
 #---#
 def buildImageResponse(responseCode, mimeType, content) :
@@ -75,7 +83,6 @@ def server_root(request:Request):
     length_of_file = str(len(encoded_file))
     return ("HTTP/1.1 200 OK\r\nX-Content-Type-Options: nosniff\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + length_of_file + "\r\nSet-Cookie: visits=" + visits_str + "; Max-Age=3600\r\n\r\n").encode() + encoded_file
 
-#Some other function (Functions for endpoints of server)
 def server_js(request:Request):
     readfile = fileReader("./public/functions.js")
     return buildResponse("200 OK", "text/javascript; charset=utf-8", readfile)
@@ -161,7 +168,6 @@ def server_update_chat_msg(request:Request):
         else:
             return buildResponse("404 Not Found", "text/plain; charset=utf-8", "Message not found :(")
 
-#Some other function (Functions for endpoints of server)
 def server_image(request:Request):
     req_path = request.path
 
@@ -184,8 +190,43 @@ def server_image(request:Request):
     readfile = imageReader(image_file_path)
     return buildImageResponse("200 OK", "image/jpeg", readfile)
 
+#---server_register---#
+#   -Parameters: A request object
+#   -Returns: 302 Found redirect (sends user back to homepage)
+#   -Objective: Store usernames and salted hash of password into database.
+#    The password must pass criteria using validate_password method or reg fails.
+#    No failed reg message required.
 def server_register(request:Request):
-    return
+    #Extract username and password
+    credential_list = auth.extract_credentials(request)
+    username = credential_list[0]
+    password = credential_list[1]
 
+    #Check if password meets criteria
+    if not auth.validate_password(password):
+        return buildResponse("420 Invalid Password", "text/plain", "Your password did not meet the requirments :()")
+    else:
+        #Create salted hash of password
+        salt = bcrypt.gensalt()
+        hashed_password = bcrypt.hashpw(password.encode(), salt)
+
+        #Input username and password into the database
+
+        return
+        
+
+#---server_login---#
+#   -Parameters: A request object
+#   -Returns: 302 Found redirect (sends user back to homepage)
+#   -Objective: Authenticates requests based on data from database. If salted hash of pw
+#    matches what we have in database, then user is authenticated. On successful login,
+#    set an auth token as a cookie (with HttpOnly directive). Tokens should be random vals and have
+#    hash stored in database to verify on subsequent requests.
 def server_login(request:Request):
+    #Extract username and password
+    credential_list = auth.extract_credentials(request)
+    username = credential_list[0]
+    password = credential_list[1]
+
+
     return

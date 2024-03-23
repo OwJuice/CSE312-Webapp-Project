@@ -1,8 +1,4 @@
 import socketserver
-import util.dbHandler as dbHandler 
-#Importing as dbHandler will prevent me from having to type util.dbHandler.<function> everytime I wanna use a function from that file
-# so I can just do dbHandler.<function>. I could have imported all (*), but this would reduce code clarity as I wouldn't know where a function
-# came from when calling it.
 from util.request import Request
 from util.router import Router
 from util.requestHandler import *

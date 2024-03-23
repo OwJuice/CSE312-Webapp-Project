@@ -4,6 +4,8 @@ from bson import json_util
 
 mongo_client = MongoClient("mongo")
 db = mongo_client["cse312"]
+chat_collection = db["chat"]
+users_collection = db["users"]
 
 #Helper function to increment message ID
 def get_next_message_id():
@@ -19,7 +21,6 @@ def insertChatMessage(message):
     if "message_counter" not in db.list_collection_names():
         db["message_counter"].insert_one({"_id": "message_id", "value": 0})
     
-    chat_collection = db["chat"]
     #message is a JSON string. We need JSON.loads() to turn it python dictionary compatible
     python_message_dictionary = json.loads(message)
     python_message = python_message_dictionary['message']
@@ -31,7 +32,6 @@ def insertChatMessage(message):
     return json_message
 
 def getAllChatMessages():
-    chat_collection = db["chat"]
     all_chat_messages = chat_collection.find()
 
 
@@ -58,7 +58,6 @@ def getAllChatMessages():
     return json_messages
 
 def getOneChatMessage(id):
-    chat_collection = db["chat"]
     query = {"_id": id}
     target_message = chat_collection.find_one(query)
     if target_message:
@@ -68,14 +67,12 @@ def getOneChatMessage(id):
         return None
     
 def deleteChatMessage(id):
-    chat_collection = db["chat"]
     query = {"_id": id}
     chat_collection.delete_one(query)
     return None
 
 def update_document(id, new_message_document):
     # Check if the document with the given ID exists
-    chat_collection = db["chat"]
     query = {"_id": id}
     old_message = chat_collection.find_one(query)
     if old_message is None:
@@ -97,3 +94,6 @@ def update_document(id, new_message_document):
         new_username = new_message_document["username"]
         chat_collection.update_one({"_id": id}, {"$set": {"message": new_message, "username": new_username}})
         return True  # Document message updated successfully
+    
+def register_user():
+    return
