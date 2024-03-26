@@ -53,10 +53,14 @@ class Router:
         req_method = request.method #Use as part of key lookup
         req_path = request.path #Use as part of key lookup
         route_key = (req_method, req_path)
+        print("@@@@@@@@ Path is: " + str(req_path))
+        print("@@@@@@@@ Method is: " + str(req_method))
+        print("@@@@@@@@ Routes are: " + str(self.routes))
 
         # Iterate through stored routes to find a matching route
         for stored_method, stored_path in self.routes:
             # Check if the request method matches and if the stored_path regex matches the requested path
+            print("@@@@@@@@ Check: " + str(req_method == stored_method and re.match(stored_path, req_path)))
             if req_method == stored_method and re.match(stored_path, req_path):
                 # Call the corresponding handler function
                 requestHandlerFunction = self.routes[(stored_method, stored_path)]

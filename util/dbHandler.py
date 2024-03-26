@@ -95,5 +95,14 @@ def update_document(id, new_message_document):
         chat_collection.update_one({"_id": id}, {"$set": {"message": new_message, "username": new_username}})
         return True  # Document message updated successfully
     
-def register_user():
+def register_user(username, salt, salted_hashed_password):
+    users_collection.insert_one({
+            "username": username,
+            "salt": salt,
+            "salted_hashed_password": salted_hashed_password
+        })
     return
+
+def get_user_credentials(username):
+    query = {"username": username}
+    return users_collection.find_one(query) # This is a dictionary of DB fields

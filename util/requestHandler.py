@@ -47,6 +47,21 @@ def buildImageResponse(responseCode, mimeType, content) :
 
     return response
 
+#---buildRedirectResponse Function---#
+#   A helper function to build redirect responses after receiving a request
+#   Takes a protocol(http version), response code, and a url to redirect to
+#   Content length is 0 since no content is being sent
+#   NOTE: .decode converts bytes to string, .encode converts string to bytes
+#---#
+def buildRedirectResponse(protocol, responseCode, redirect_url) :
+    response = protocol + " " + responseCode + "\r\n"
+    response += "Content-Length: 0" + "\r\n"
+    response += "Location: " + redirect_url
+    response += "\r\n\r\n"
+    encoded_response = response.encode()
+
+    return encoded_response
+
 #---fileReader---#
 #   A helper function that just takes in a file as a string, opens it, reads it, and returns the entire file as a string
 def fileReader(filename):
@@ -197,22 +212,31 @@ def server_image(request:Request):
 #    The password must pass criteria using validate_password method or reg fails.
 #    No failed reg message required.
 def server_register(request:Request):
+    req_http = request.http_version
+
     #Extract username and password
     credential_list = auth.extract_credentials(request)
     username = credential_list[0]
     password = credential_list[1]
 
+    print("$$$$$$$$$ Username: " + str(username))
+    print("$$$$$$$$$ Password: " + str(password))
     #Check if password meets criteria
     if not auth.validate_password(password):
-        return buildResponse("420 Invalid Password", "text/plain", "Your password did not meet the requirments :()")
+        print("&&&&&&& Password invalid checked")
+        return buildRedirectResponse(req_http, "302 Found", "/")
     else:
+        print("&&&&&&& Password is indeed valid checked")
         #Create salted hash of password
         salt = bcrypt.gensalt()
-        hashed_password = bcrypt.hashpw(password.encode(), salt)
+        salted_hashed_password = str(bcrypt.hashpw(password.encode(), salt))
+        salt_str = str(salt)
+        salted_hashed_password_str = str(salted_hashed_password)
 
-        #Input username and password into the database
-
-        return
+        #Input username, salt, and the salted hash of password into the database
+        dbHandler.register_user(username, salt_str, salted_hashed_password_str)
+        
+        return buildRedirectResponse(req_http, "302 Found", "/")
         
 
 #---server_login---#
@@ -223,10 +247,28 @@ def server_register(request:Request):
 #    set an auth token as a cookie (with HttpOnly directive). Tokens should be random vals and have
 #    hash stored in database to verify on subsequent requests.
 def server_login(request:Request):
+    req_http = request.http_version
+    req_cookies = request.cookies
+
     #Extract username and password
     credential_list = auth.extract_credentials(request)
     username = credential_list[0]
     password = credential_list[1]
 
+    #Retrieve stored salt and hashed pw.
+    user_document = dbHandler.get_user_credentials(username)
+    
+    if user_document:
+        stored_password = user_document["salted_hashed_password"]
+        stored_salt = user_document["salt"]
+        
+        # Compare password with stored salted, hashed password
+        password_to_check = str(bcrypt.hashpw(password.encode(), stored_salt))
+        if password_to_check == stored_password:
+            # Set an auth token as cookie (with HttpOnly directive set) and store as hash (no salt) in DB for that user
+
+            return buildRedirectResponse(req_http, "302 Found", "/")
+        else:
+            return buildRedirectResponse(req_http, "302 Found", "/")
 
     return

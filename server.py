@@ -18,8 +18,8 @@ router.add_route("DELETE", "/chat-messages/", server_delete_chat_msg)
 router.add_route("PUT", "/chat-messages/", server_update_chat_msg)
 router.add_route("GET", "/public/image/", server_image)
 
-router.add_route("post", "/register$", server_register)
-router.add_route("post", "/login$", server_login)
+router.add_route("POST", "/register$", server_register)
+router.add_route("POST", "/login$", server_login)
 
 class MyTCPHandler(socketserver.BaseRequestHandler):
 
