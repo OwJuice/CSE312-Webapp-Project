@@ -126,3 +126,17 @@ def get_username_from_token(hashed_auth_token):
         return user_document["username"]
     else:
         return None
+    
+#---delete_auth_token---#
+#  -Deletes the auth token after looking it up.
+#  -Returns True if auth token was valid and token was deleted from DB. False otherwise.
+def delete_auth_token(hashed_auth_token):
+    # Update the user document to remove the auth token
+    query = {"auth_token": hashed_auth_token}
+    user_document = users_collection.find_one(query)
+
+    if user_document:
+        users_collection.update_one({"auth_token": hashed_auth_token}, {"$unset": {"auth_token": ""}})
+        return True
+    else:
+        return False

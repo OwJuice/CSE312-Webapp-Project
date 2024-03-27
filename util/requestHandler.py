@@ -298,3 +298,24 @@ def server_login(request:Request):
             return buildRedirectResponse(req_http, "302 Found", "/")
 
     return buildRedirectResponse(req_http, "302 Found", "/")
+
+#---server_logout---#
+#  -Logs a user out and invalidates their auth token. It will delete their auth token from the database 
+def server_logout(request:Request):
+    req_http = request.http_version
+    req_cookies = request.cookies
+
+    #Determine whether or not the user is successfully logged in
+    auth_token_cookie = req_cookies.get("auth_cookie")
+    if auth_token_cookie:
+        # Attempt to delete that cookie from the database
+        auth_token_to_check = hashlib.sha256(auth_token_cookie.encode()).hexdigest()
+        delete_check = dbHandler.delete_auth_token(auth_token_to_check)
+        if delete_check is True:
+            #Set the cookie to ""
+            set_cookie_list = [str('auth_cookie=""; HttpOnly')]
+            return buildRedirectResponse(req_http, "302 Found", "/", set_cookie_list)
+        else:
+            return buildRedirectResponse(req_http, "302 Found", "/")
+    else:
+        return buildRedirectResponse(req_http, "302 Found", "/")

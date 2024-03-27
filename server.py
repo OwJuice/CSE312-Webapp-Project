@@ -20,6 +20,7 @@ router.add_route("GET", "/public/image/", server_image)
 
 router.add_route("POST", "/register$", server_register)
 router.add_route("POST", "/login$", server_login)
+router.add_route("POST", "/logout$", server_logout)
 
 class MyTCPHandler(socketserver.BaseRequestHandler):
 
