@@ -50,17 +50,22 @@ def buildImageResponse(responseCode, mimeType, content) :
 #---buildRedirectResponse Function---#
 #   A helper function to build redirect responses after receiving a request
 #   Takes a protocol(http version), response code, and a url to redirect to
+#   Also takes a list of cookies if provided.
 #   Content length is 0 since no content is being sent
 #   NOTE: .decode converts bytes to string, .encode converts string to bytes
 #---#
-def buildRedirectResponse(protocol, responseCode, redirect_url) :
+def buildRedirectResponse(protocol, responseCode, redirect_url, cookies=None) :
     response = protocol + " " + responseCode + "\r\n"
     response += "Content-Length: 0" + "\r\n"
-    response += "Location: " + redirect_url
-    response += "\r\n\r\n"
-    encoded_response = response.encode()
+    response += "Location: " + redirect_url + "\r\n"
 
-    return encoded_response
+    # Add cookies if provided
+    if cookies:
+        for cookie in cookies:
+            response += "Set-Cookie: " + cookie + "\r\n"
+
+    response += "\r\n"  # End of headers
+    return response.encode()
 
 #---fileReader---#
 #   A helper function that just takes in a file as a string, opens it, reads it, and returns the entire file as a string
@@ -116,11 +121,29 @@ def server_favicon(request:Request):
 
 def server_post_chat_msgs(request:Request):
     req_body = request.body
+    req_cookies = request.cookies
+
+    #Determine whether or not the user is successfully logged in
+    auth_token_cookie = req_cookies.get("auth_cookie")
+    if auth_token_cookie:
+        #Hash the retrieved cookie to see if it matches the stored hash
+        auth_token_to_check = hashlib.sha256(auth_token_cookie.encode()).hexdigest()
+        username = dbHandler.get_username_from_token(auth_token_to_check)
+        # See if the username exists in database
+        if not username:
+            username = "Guest"
+
+    else:
+        # Auth token cookie doesn't exist
+        username = "Guest"
+    #At this point, the username is the one associated with auth token from DB
+    #If no auth token or no user associated, then username is "Guest"
+    
 
     #Escape HTML before inserting msg into database
     chat_message = req_body.decode()
     safe_message = htmlInjectionPreventer(chat_message)
-    message_document = dbHandler.insertChatMessage(safe_message)
+    message_document = dbHandler.insertChatMessage(username, safe_message)
     return buildResponse("201 Created", "application/json; charset=utf-8", message_document)
 
 def server_get_chat_msgs(request:Request):
@@ -229,12 +252,10 @@ def server_register(request:Request):
         print("&&&&&&& Password is indeed valid checked")
         #Create salted hash of password
         salt = bcrypt.gensalt()
-        salted_hashed_password = str(bcrypt.hashpw(password.encode(), salt))
-        salt_str = str(salt)
-        salted_hashed_password_str = str(salted_hashed_password)
+        salted_hashed_password = bcrypt.hashpw(password.encode(), salt)
 
         #Input username, salt, and the salted hash of password into the database
-        dbHandler.register_user(username, salt_str, salted_hashed_password_str)
+        dbHandler.register_user(username, salt, salted_hashed_password)
         
         return buildRedirectResponse(req_http, "302 Found", "/")
         
@@ -263,12 +284,17 @@ def server_login(request:Request):
         stored_salt = user_document["salt"]
         
         # Compare password with stored salted, hashed password
-        password_to_check = str(bcrypt.hashpw(password.encode(), stored_salt))
-        if password_to_check == stored_password:
-            # Set an auth token as cookie (with HttpOnly directive set) and store as hash (no salt) in DB for that user
-
-            return buildRedirectResponse(req_http, "302 Found", "/")
+        #password_to_check = bcrypt.hashpw(password.encode(), stored_salt)
+        if bcrypt.checkpw(password.encode(), stored_password):
+            # Generate an auth token and its hash
+            token = secrets.token_urlsafe(32)  # Token is a string
+            hashed_token = hashlib.sha256(token.encode()).hexdigest() # Hashed token is a hex string (and is stored that way in DB)
+            # Store hashed_token into database
+            dbHandler.insert_token(username, hashed_token)
+            # Set an auth token as cookie (with HttpOnly directive set)
+            set_cookie_list = [str("auth_cookie=" + token + "; Max-Age=3600; HttpOnly")]
+            return buildRedirectResponse(req_http, "302 Found", "/", set_cookie_list)
         else:
             return buildRedirectResponse(req_http, "302 Found", "/")
 
-    return
+    return buildRedirectResponse(req_http, "302 Found", "/")

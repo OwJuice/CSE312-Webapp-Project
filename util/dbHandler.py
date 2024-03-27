@@ -16,7 +16,11 @@ def get_next_message_id():
     )
     return counter_doc["value"]
 
-def insertChatMessage(message):
+#---insertChatMessage---#
+#  -Takes a username and a message. 
+#  -Creates a collection of counters for message # if it doesnt exist
+#  -Puts the message with the id and username into the chat collection
+def insertChatMessage(username, message):
     #Create a collection for counters if it doesn't exist
     if "message_counter" not in db.list_collection_names():
         db["message_counter"].insert_one({"_id": "message_id", "value": 0})
@@ -25,10 +29,10 @@ def insertChatMessage(message):
     python_message_dictionary = json.loads(message)
     python_message = python_message_dictionary['message']
     message_id = get_next_message_id()
-    chat_collection.insert_one({"_id": message_id, "username":"Guest","message":python_message}) #Mongodb automatically creates unique IDs for each message
+    chat_collection.insert_one({"_id": message_id, "username":username, "message":python_message}) #Mongodb automatically creates unique IDs for each message
     
     #Return the chat message that we just inserted into the database. (AO1 purposes)
-    json_message = json.dumps({"_id": message_id, "username":"Guest","message":python_message})
+    json_message = json.dumps({"_id": message_id, "username":username, "message":python_message})
     return json_message
 
 def getAllChatMessages():
@@ -106,3 +110,19 @@ def register_user(username, salt, salted_hashed_password):
 def get_user_credentials(username):
     query = {"username": username}
     return users_collection.find_one(query) # This is a dictionary of DB fields
+
+def insert_token(username, hashed_auth_token):
+    users_collection.update_one({"username": username}, {"$set": {"auth_token": hashed_auth_token}})
+    return
+
+#---get_username_from_token---#
+#   A helper function that returns a username associated with a given auth token.
+#   Returns none if no associated username exists.
+def get_username_from_token(hashed_auth_token):
+    query = {"auth_token": hashed_auth_token}
+    user_document = users_collection.find_one(query)
+
+    if user_document:
+        return user_document["username"]
+    else:
+        return None
