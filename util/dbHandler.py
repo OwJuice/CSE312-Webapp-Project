@@ -140,3 +140,10 @@ def delete_auth_token(hashed_auth_token):
         return True
     else:
         return False
+    
+#---get_username_from_chat---#
+#  -Retrieves the username associated with a given chat message id
+def get_username_from_chat(message_id):
+    query = {"_id": message_id}
+    chat_document = chat_collection.find_one(query)
+    return chat_document["username"]

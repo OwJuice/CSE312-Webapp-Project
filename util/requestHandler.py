@@ -170,7 +170,9 @@ def server_get_chat_msg(request:Request):
             return buildResponse("404 Not Found", "text/plain; charset=utf-8", "Message not found :(")
 
 def server_delete_chat_msg(request:Request):
+    req_http = request.http_version
     req_path = request.path
+    req_cookies = request.cookies
 
     stripped_path = req_path.strip("/")
     message_path = stripped_path.split("/") #Message_path is a string at this point, including the id
@@ -182,8 +184,24 @@ def server_delete_chat_msg(request:Request):
         # Handle the case where message_id_str is not a valid integer
         return buildResponse("404 Not Found", "text/plain; charset=utf-8", "Message ID is not valid >:(")
     else:
-        dbHandler.deleteChatMessage(message_id)
-        return "HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n".encode()
+        # Determine if we have the authentification to delete the message
+        # Use the auth_token to get the username
+        auth_token_cookie = req_cookies.get("auth_cookie")
+        if auth_token_cookie:
+            auth_token_to_check = hashlib.sha256(auth_token_cookie.encode()).hexdigest()
+            username = dbHandler.get_username_from_token(auth_token_to_check)
+            # Lookup the username associated with the message id and check if usernames are the same
+            stored_username = dbHandler.get_username_from_chat(message_id)
+            # If the current username matches the username associated with the id, delete message
+            if username == stored_username:
+                dbHandler.deleteChatMessage(message_id)
+                return "HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n".encode()
+            else:
+                # Usernames don't match, so not authorized to delete
+                return buildResponse("403 Not Authorized", "text/plain; charset=utf-8", "You can't delete someone else's message >:O")
+        else:
+            # The user is not logged in. (Doesn't have auth_token) Just redirect to homepage.
+            return buildRedirectResponse(req_http, "302 Found", "/")
     
 def server_update_chat_msg(request:Request):
     req_path = request.path
