@@ -8,6 +8,7 @@ import util.auth as auth
 import secrets
 import hashlib
 import bcrypt
+import json
 
 
 #===requestHandler.py===#
@@ -99,6 +100,25 @@ def server_root(request:Request):
     visits_counter += 1 #Increment visits counter by 1
     visits_str = str(visits_counter)
     readfile = readfile.replace("{{visits}}", visits_str)
+    # Check if user is logged/authenticated
+    auth_token_cookie = req_cookies.get("auth_cookie")
+    if auth_token_cookie:
+        auth_token_hashed = hashlib.sha256(auth_token_cookie.encode()).hexdigest()
+        xsrf_token = dbHandler.xsrf_token_check(auth_token_hashed)
+        if xsrf_token is None:
+            # The user doesn't have an xsrf token yet, so generate one and store it
+            
+            xsrf_token = secrets.token_urlsafe(32)
+            dbHandler.insert_xsrf_token(auth_token_hashed, xsrf_token)
+            # Put the xsrf token in the html
+            readfile = readfile.replace("{{xsrf_token}}", xsrf_token)
+
+        elif xsrf_token == "0":
+            pass
+        else:
+            # The user currently has an xsrf token so use it
+            readfile = readfile.replace("{{xsrf_token}}", xsrf_token)
+
     encoded_file = readfile.encode()
     length_of_file = str(len(encoded_file))
     return ("HTTP/1.1 200 OK\r\nX-Content-Type-Options: nosniff\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + length_of_file + "\r\nSet-Cookie: visits=" + visits_str + "; Max-Age=3600\r\n\r\n").encode() + encoded_file
@@ -120,8 +140,14 @@ def server_favicon(request:Request):
     return buildImageResponse("200 OK", "image/x-icon", readfile)
 
 def server_post_chat_msgs(request:Request):
-    req_body = request.body
+    req_body = request.body #This contains the message and the xsrf token
     req_cookies = request.cookies
+    req_body_decoded = req_body.decode()
+    req_body_dict = json.loads(req_body_decoded)
+    chat_message = req_body_dict['message']
+    xsrf_token = req_body_dict['xsrf_token']
+
+    print("$$$$$ The body is: " + req_body_decoded)
 
     #Determine whether or not the user is successfully logged in
     auth_token_cookie = req_cookies.get("auth_cookie")
@@ -138,10 +164,24 @@ def server_post_chat_msgs(request:Request):
         username = "Guest"
     #At this point, the username is the one associated with auth token from DB
     #If no auth token or no user associated, then username is "Guest"
-    
+        
+    # Now check if the user's submitted xsrf token matches the stored xsrf token
+    print("$$$$$ username is: " + str(username))
+    if username != "Guest":
+        print("$$$$$ username is not 'Guest'")
+        # User is not a guest and is logged in
+        stored_xsrf_token = dbHandler.xsrf_token_from_username(username)
+        print("$$$$$ stored xsrf is: " + str(stored_xsrf_token))
+        print("$$$$$  xsrf is: " + str(xsrf_token))
+        if stored_xsrf_token != xsrf_token:
+            # Bad xsrf token
+            return buildResponse("403 Not Authorized", "text/plain; charset=utf-8", "Invalid XSRF token >:O")
+        else:
+            pass # If xsrf token is valid, pass through and send a chat message
+            #Todo: GOTTA HAVE SOMETHING HERE
 
+    # User is either a guest or their xsrf token is valid
     #Escape HTML before inserting msg into database
-    chat_message = req_body.decode()
     safe_message = htmlInjectionPreventer(chat_message)
     message_document = dbHandler.insertChatMessage(username, safe_message)
     return buildResponse("201 Created", "application/json; charset=utf-8", message_document)
@@ -260,14 +300,10 @@ def server_register(request:Request):
     username = credential_list[0]
     password = credential_list[1]
 
-    print("$$$$$$$$$ Username: " + str(username))
-    print("$$$$$$$$$ Password: " + str(password))
     #Check if password meets criteria
     if not auth.validate_password(password):
-        print("&&&&&&& Password invalid checked")
         return buildRedirectResponse(req_http, "302 Found", "/")
     else:
-        print("&&&&&&& Password is indeed valid checked")
         #Create salted hash of password
         salt = bcrypt.gensalt()
         salted_hashed_password = bcrypt.hashpw(password.encode(), salt)

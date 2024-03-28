@@ -34,6 +34,7 @@
 
 
         <div class="chat-form">
+            <input type="hidden" id="xsrf_token" name="xsrf_token" value="{{xsrf_token}}">
             <hr>
             <label>
                 Chat:
@@ -62,6 +63,7 @@
 
         Register:
         <form action="/register" method="post" enctype="application/x-www-form-urlencoded">
+            
             <label>Username:
                 <input id="reg-form-username" type="text" name="username_reg"/>
             </label>
@@ -74,6 +76,7 @@
 
         Login:
         <form action="/login" method="post" enctype="application/x-www-form-urlencoded">
+            
             <label>Username:
                 <input id="login-form-username" type="text" name="username_login"/>
             </label>
@@ -89,6 +92,7 @@
         </form>
 
         <form action="/profile-pic" id="image-form" method="post" enctype="multipart/form-data">
+
             <br/>
             <label for="form-file">Change profile picture: </label>
             <input id="form-file" type="file" name="upload">

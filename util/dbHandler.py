@@ -21,18 +21,19 @@ def get_next_message_id():
 #  -Creates a collection of counters for message # if it doesnt exist
 #  -Puts the message with the id and username into the chat collection
 def insertChatMessage(username, message):
+    print("&&&&& message in insertChatMessage: " + str(type(message)))
     #Create a collection for counters if it doesn't exist
     if "message_counter" not in db.list_collection_names():
         db["message_counter"].insert_one({"_id": "message_id", "value": 0})
     
     #message is a JSON string. We need JSON.loads() to turn it python dictionary compatible
-    python_message_dictionary = json.loads(message)
-    python_message = python_message_dictionary['message']
+    #python_message_dictionary = json.loads(message)
+    #python_message = python_message_dictionary['message']
     message_id = get_next_message_id()
-    chat_collection.insert_one({"_id": message_id, "username":username, "message":python_message}) #Mongodb automatically creates unique IDs for each message
+    chat_collection.insert_one({"_id": message_id, "username":username, "message":message}) #Mongodb automatically creates unique IDs for each message
     
     #Return the chat message that we just inserted into the database. (AO1 purposes)
-    json_message = json.dumps({"_id": message_id, "username":username, "message":python_message})
+    json_message = json.dumps({"_id": message_id, "username":username, "message":message})
     return json_message
 
 def getAllChatMessages():
@@ -115,6 +116,10 @@ def insert_token(username, hashed_auth_token):
     users_collection.update_one({"username": username}, {"$set": {"auth_token": hashed_auth_token}})
     return
 
+def insert_xsrf_token(hashed_auth_token, xsrf_token):
+    users_collection.update_one({"auth_token": hashed_auth_token}, {"$set": {"xsrf_token": xsrf_token}})
+    return
+
 #---get_username_from_token---#
 #   A helper function that returns a username associated with a given auth token.
 #   Returns none if no associated username exists.
@@ -147,3 +152,28 @@ def get_username_from_chat(message_id):
     query = {"_id": message_id}
     chat_document = chat_collection.find_one(query)
     return chat_document["username"]
+
+#---get_xsrf_token---#
+#  -Retrieves the xsrf token associated with the user's auth token.
+#  -Returns that xsrf token if it exists, None if it doesn't exist
+def xsrf_token_check(hashed_auth_token):
+    query = {"auth_token": hashed_auth_token}
+    user_document = users_collection.find_one(query)
+    print("$$$$$ user_document when xsrf check is: " + str(user_document))
+
+    if user_document:
+        xsrf_token = user_document.get("xsrf_token")
+        if xsrf_token is not None:
+            return xsrf_token # If user exist and has xsrf token
+        else:
+            return None # For user doesn't have xsrf token
+    else:
+        return "0" # For user doesn't exist for auth token
+    
+def xsrf_token_from_username(username):
+    query = {"username": username}
+    user_document = users_collection.find_one(query)
+    if user_document:
+        return user_document["xsrf_token"]
+    else:
+        return None
