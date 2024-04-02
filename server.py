@@ -22,6 +22,8 @@ router.add_route("POST", "/register$", server_register)
 router.add_route("POST", "/login$", server_login)
 router.add_route("POST", "/logout$", server_logout)
 
+router.add_route("POST", "/form-path$", server_multipart_form)
+
 class MyTCPHandler(socketserver.BaseRequestHandler):
 
     def handle(self):

@@ -21,7 +21,7 @@ class Request:
         cookies_dict = {}
         for header_line in all_header_lines:
             split_header = header_line.split(":", 1)
-            header_key = split_header[0]
+            header_key = split_header[0].strip()
             header_val = split_header[1].strip()
             #Add those key-val pairs to the header dictionary
             headers_dict[header_key] = header_val

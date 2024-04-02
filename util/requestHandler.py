@@ -373,3 +373,7 @@ def server_logout(request:Request):
             return buildRedirectResponse(req_http, "302 Found", "/")
     else:
         return buildRedirectResponse(req_http, "302 Found", "/")
+
+#---server_multipart_form---#
+def server_multipart_form(request:Request):
+    return
