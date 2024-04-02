@@ -4,7 +4,7 @@ class Request:
         # TODO: parse the bytes of the request and populate the following instance variables
         
         #Separate headers & request line from body
-        total_request = request.split(b"\r\n\r\n")
+        total_request = request.split(b"\r\n\r\n", 1)
         reqline_headers = total_request[0].decode() #reqline_headers contains the string of the request line and the headers together
         
         #Separate request line from headers

@@ -56,7 +56,32 @@ def parse_multipart(request: Request):
 
     # Put all parts into a list
     all_parts = request.body 
-    
+    print("BODY IS: ")
+    print(all_parts)
+
+    parts = request.body.split(b"--" + boundary.encode())
+    print("BODY IS:", parts)
+    for part in parts[1:-1]:  # Skip the first and last empty parts
+        # Split each part into headers and content
+        headers_content = part.split(b"\r\n\r\n", 1)
+        part_headers = headers_content[0].decode().split("\r\n")
+        part_body = headers_content[1]
+
+        # Extract name and filename from Content-Disposition header
+        part_name = None
+        part_filename = None
+        for header in part_headers:
+            if header.startswith("Content-Disposition"):
+                disposition_params = header.split(";")
+                for param in disposition_params:
+                    param = param.strip()
+                    if param.startswith("name="):
+                        part_name = param.split("=")[1].strip('"')
+                    elif param.startswith("filename="):
+                        part_filename = param.split("=")[1].strip('"')
+
+        # Create Part_Data object and append to part_list
+        part_list.append(Part_Data(part_headers, part_name, part_body))
 
     return Multipart_Data(boundary, part_list)
 
