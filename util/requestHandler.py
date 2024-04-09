@@ -9,6 +9,8 @@ import secrets
 import hashlib
 import bcrypt
 import json
+import uuid
+import multipart as multipart
 
 
 #===requestHandler.py===#
@@ -92,6 +94,26 @@ def htmlInjectionPreventer(string):
     safe_string = safe_string.replace(">", "&gt")
     return safe_string
 
+#---get_username---#
+#   A helper function that takes the cookies of a request and finds a username associated with the auth_token sent with the request.
+#   If no auth token found or no username associated with the auth token, then the user is a Guest.
+#   TLDR: Determines whether or not a user is successfully logged in and returns username.
+def get_username(req_cookies: dict):
+    auth_token_cookie = req_cookies.get("auth_cookie")
+    username = ""
+    if auth_token_cookie:
+        #Hash the retrieved cookie to see if it matches the stored hash
+        auth_token_to_check = hashlib.sha256(auth_token_cookie.encode()).hexdigest()
+        username = dbHandler.get_username_from_token(auth_token_to_check)
+        # See if the username exists in database
+        if not username:
+            username = "Guest"
+
+    else:
+        # Auth token cookie doesn't exist
+        username = "Guest"
+    return username
+
 def server_root(request:Request):
     req_cookies = request.cookies
 
@@ -150,18 +172,7 @@ def server_post_chat_msgs(request:Request):
     print("$$$$$ The body is: " + req_body_decoded)
 
     #Determine whether or not the user is successfully logged in
-    auth_token_cookie = req_cookies.get("auth_cookie")
-    if auth_token_cookie:
-        #Hash the retrieved cookie to see if it matches the stored hash
-        auth_token_to_check = hashlib.sha256(auth_token_cookie.encode()).hexdigest()
-        username = dbHandler.get_username_from_token(auth_token_to_check)
-        # See if the username exists in database
-        if not username:
-            username = "Guest"
-
-    else:
-        # Auth token cookie doesn't exist
-        username = "Guest"
+    username = get_username(req_cookies)
     #At this point, the username is the one associated with auth token from DB
     #If no auth token or no user associated, then username is "Guest"
         
@@ -375,5 +386,30 @@ def server_logout(request:Request):
         return buildRedirectResponse(req_http, "302 Found", "/")
 
 #---server_multipart_form---#
+#  -Objective: Respond to an image upload by sending the filename as a chat message 
 def server_multipart_form(request:Request):
+    req_cookies = request.cookies
+    req_http = request.http_version
+    multipart_data = multipart.parse_multipart(request)
+    username = get_username(req_cookies)
+
+    #Check each part of the multipart form for the uploaded image
+    for part in multipart_data.parts:
+        if part.name == "upload":
+            #Create a new filename and path for the image 
+
+            filename = str(uuid.uuid4()) + ".jpg"
+            if dbHandler.filename_checker(filename):
+                while dbHandler.filename_checker(filename):
+                    filename = filename = str(uuid.uuid4()) + ".jpg"
+            upload_path = os.path.join("/public/user-image", filename)
+
+            #Write image file to image directory
+            f = open(upload_path, "wb")
+            f.write(part.content)
+
+            message = f'<img src="{upload_path}" alt="User Uploaded Image"/>'
+            dbHandler.insertChatMessage(username, message)
+            buildRedirectResponse(req_http, "302 Found", "/")
+
     return

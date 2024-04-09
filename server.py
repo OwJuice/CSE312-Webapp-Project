@@ -23,6 +23,7 @@ router.add_route("POST", "/login$", server_login)
 router.add_route("POST", "/logout$", server_logout)
 
 router.add_route("POST", "/form-path$", server_multipart_form)
+router.add_route("GET", "/public/user-image/.", server_image)
 
 class MyTCPHandler(socketserver.BaseRequestHandler):
 

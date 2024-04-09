@@ -108,7 +108,18 @@ def parse_multipart(request: Request):
         #print("NAME IS: " + str(name))
         #print("subheader_dict: " + str(subheader_dict))
         #print("subcontent: " + str(subcontent))
-        part_list.append(Part_Data(subheader_dict, name, subcontent))
+            
+        #Convert dictionary and name to strings:
+        decoded_subheader_dict = {}
+
+        for key, value in subheader_dict.items():
+            decoded_key = key.decode()
+            decoded_value = value.decode()
+            decoded_subheader_dict[decoded_key] = decoded_value
+
+        decoded_name = name.decode()
+
+        part_list.append(Part_Data(decoded_subheader_dict, decoded_name, subcontent))
 
     return Multipart_Data(boundary, part_list)
 
@@ -123,13 +134,13 @@ def test1():
     assert len(multipart_data.parts) == 2
 
     part1 = multipart_data.parts[0]
-    assert part1.name == b"commenter"
-    assert part1.headers == {b'Content-Disposition': b'form-data; name="commenter"'}
+    assert part1.name == "commenter"
+    assert part1.headers == {'Content-Disposition': 'form-data; name="commenter"'}
     assert part1.content == b"Jesse"
 
     part2 = multipart_data.parts[1]
-    assert part2.name == b"upload"
-    assert part2.headers == {b'Content-Disposition': b'form-data; name="upload"; filename="discord.png"', b'Content-Type': b'image/png'}
+    assert part2.name == "upload"
+    assert part2.headers == {'Content-Disposition': 'form-data; name="upload"; filename="discord.png"', 'Content-Type': 'image/png'}
     assert part2.content == b"<bytes_of_the_file>"
 
 

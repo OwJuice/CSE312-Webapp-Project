@@ -177,3 +177,14 @@ def xsrf_token_from_username(username):
         return user_document["xsrf_token"]
     else:
         return None
+    
+#This function checks if a filename already exists in our chat collection (for image purposes)
+#It returns False if file doesn't exist, true if it does
+def filename_checker(filename):
+    # Query the database to check if the filename exists
+    query = {"filename": filename}
+    result = chat_collection.find_one(query)
+    if result is not None:
+        return True
+    else:
+        return False

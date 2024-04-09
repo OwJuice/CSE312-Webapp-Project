@@ -18,7 +18,7 @@
     <div class="welcome-div">
         <p id="paragraph">
             Welcome to CSE312 Social. You're one stop for chat, image uploads, and video calls 🙂.
-            You've been here {{visits}} times.
+            You've been here {{visits}} times. 
         </p>
     </div>
 </div>
@@ -42,6 +42,12 @@
             </label>
             <button id="chat-button" onclick="sendChat()">Send</button>
         </div>
+
+        <form action="/form-path" method="post" enctype="multipart/form-data" id="image-upload-form">
+            <input type="file" name="upload" id="image-upload-input">
+            <br/>
+            <input type="submit" value="Upload Image">
+        </form>
 
     </div>
 
