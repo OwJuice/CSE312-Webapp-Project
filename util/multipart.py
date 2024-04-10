@@ -1,4 +1,4 @@
-from request import Request
+from util.request import Request
 
 #===multipart file===#
 #  -This file contains a class and a function for LO1.
