@@ -18,10 +18,11 @@ class Multipart_Data:
 #    ->name: str of the Content-Disposition header that matches name of that part in the HTML form
 #    ->content: bytes of that part's content. (Content may contain b'\r\n\r\n', which should not corrupt data)
 class Part_Data:
-    def __init__(self, headers: dict, name: str, content: bytes):
+    def __init__(self, headers: dict, name: str, content: bytes, filename: str):
         self.headers = headers
         self.name = name
         self.content = content
+        self.filename = filename
         
 #---parse_multipart---#
 #  -Objective: This function exracts relevant values of a multipart request.
@@ -95,14 +96,17 @@ def parse_multipart(request: Request):
         #print("^^^ content_disposition: " + str(content_disposition))
         content_disposition_split = content_disposition.split(b';')
         name = None
+        filename = None
+
         for content_disposition_part in content_disposition_split:
             content_disposition_part = content_disposition_part.strip()
-            #print("content_disposition_part IS: " + str(content_disposition_part))
+
             if content_disposition_part.startswith(b'name='):
-                #print("content_disposition_part STARTS WITH NAME: " + str(content_disposition_part))
                 name = content_disposition_part.split(b'=')[1].strip(b'"')
-                #print("NAME IS: " + str(name))
-                break
+            
+            if content_disposition_part.startswith(b'filename='):
+                filename = content_disposition_part.split(b'=')[1].strip(b'"')
+
 
         # Build the part objects and put them into the part_list
         #print("NAME IS: " + str(name))
@@ -118,8 +122,10 @@ def parse_multipart(request: Request):
             decoded_subheader_dict[decoded_key] = decoded_value
 
         decoded_name = name.decode()
+        if filename is not None:
+            filename = filename.decode()
 
-        part_list.append(Part_Data(decoded_subheader_dict, decoded_name, subcontent))
+        part_list.append(Part_Data(decoded_subheader_dict, decoded_name, subcontent, filename))
 
     return Multipart_Data(boundary, part_list)
 

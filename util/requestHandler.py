@@ -408,6 +408,9 @@ def server_multipart_form(request:Request):
             f = open(upload_path, "wb")
             f.write(part.content)
 
+            #Also for security, replace "/"s in the filename from user
+            #part.headers[filename]
+
             message = f'<img src="{upload_path}" alt="User Uploaded Image"/>'
             dbHandler.insertChatMessage(username, message)
             buildRedirectResponse(req_http, "302 Found", "/")
