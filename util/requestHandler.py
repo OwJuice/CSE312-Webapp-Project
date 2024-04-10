@@ -409,7 +409,8 @@ def server_multipart_form(request:Request):
             f.write(part.content)
 
             #Also for security, replace "/"s in the filename from user
-            #part.headers[filename]
+            if part.filename is not None:
+                part.filename.replace("/", "")
 
             message = f'<img src="{upload_path}" alt="User Uploaded Image"/>'
             dbHandler.insertChatMessage(username, message)

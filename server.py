@@ -44,6 +44,12 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         req_headers = request.headers
         req_cookies = request.cookies
 
+        #Buffering: Check if the content length from multipart header is greater than the current request's length
+        whole_length = req_headers.get("Content-Length")
+        while whole_length > len(req_body):
+            new_data = self.request.recv(min(2048, whole_length - len(req_body)))
+            request.add_data(new_data)
+
         response = router.route_request(request)
         self.request.sendall(response)
 
