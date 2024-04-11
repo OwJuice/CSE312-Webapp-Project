@@ -23,7 +23,8 @@ router.add_route("POST", "/login$", server_login)
 router.add_route("POST", "/logout$", server_logout)
 
 router.add_route("POST", "/form-path$", server_multipart_form)
-router.add_route("GET", "/public/user-image/.", server_image)
+router.add_route("GET", "/public/user-image/.", server_user_image)
+#Need to prevent "/" or remove them after /public/user-image/.
 
 class MyTCPHandler(socketserver.BaseRequestHandler):
 
@@ -45,10 +46,19 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         req_cookies = request.cookies
 
         #Buffering: Check if the content length from multipart header is greater than the current request's length
-        whole_length = req_headers.get("Content-Length")
-        while whole_length > len(req_body):
-            new_data = self.request.recv(min(2048, whole_length - len(req_body)))
-            request.add_data(new_data)
+        whole_length = int(req_headers.get("Content-Length", 0))
+
+        current_len = len(req_body)
+        while whole_length > current_len: #While content lengh < len(body)
+            new_data = self.request.recv(min(2048, whole_length - current_len))
+            #ToDo: Need to update current_len
+            current_len += len(new_data)
+
+            if not new_data:  # Check if no more data is received
+                break
+            req_body += new_data
+        
+        request.body = req_body
 
         response = router.route_request(request)
         self.request.sendall(response)

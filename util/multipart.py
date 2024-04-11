@@ -53,32 +53,24 @@ def parse_multipart(request: Request):
     else:
         return "No boundary found :("
 
-    print("BOUNDARY: " + boundary)
 
     # Put all parts into a list
     all_parts = request.body 
-    print("BODY IS: ")
-    print(all_parts)
 
     #Todo: Parse the body to convert all parts into part objects and add to the part_list
     raw_parts = all_parts.split(b"--" + boundary.encode())
     raw_parts = raw_parts[1:-1] #Removes the first empty string as well as everything after the end boundary.
-    print("parts list are: " + str(raw_parts))
 
     for part in raw_parts:
         #Split each part into subheaders and subcontent. Only split on \r\n once so we don't potentially corrupt content
         subheaders_subcontent = part.split(b'\r\n\r\n', 1)
         subheaders = subheaders_subcontent[0]
-        print("")
-        print("&&& subheaders: " + str(subheaders))
 
         # Retrieve the content
         subcontent = subheaders_subcontent[1]
         if subcontent.endswith(b'\r\n'):
             # Remove the last two bytes ('\r\n') using slicing
             subcontent = subcontent[:-2]
-        print("### subcontent: " + str(subcontent))
-        print("")
         subheaders_list = subheaders.split(b'\r\n')[1:] #Slice out the first item which will be a \r\n
 
         #Build the subheader dictionary

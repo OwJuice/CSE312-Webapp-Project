@@ -10,7 +10,7 @@ import hashlib
 import bcrypt
 import json
 import uuid
-import multipart as multipart
+import util.multipart as multipart
 
 
 #===requestHandler.py===#
@@ -297,6 +297,28 @@ def server_image(request:Request):
     readfile = imageReader(image_file_path)
     return buildImageResponse("200 OK", "image/jpeg", readfile)
 
+def server_user_image(request:Request):
+    req_path = request.path
+
+    image_path = req_path.split("/")
+    #If path is: "/public/user-image/cat.jpg"
+    #image_path looks like: ['', 'public', 'image', 'cat.jpg']
+
+    #Check if image path is invalid path
+    if len(image_path) != 4 or image_path[3] == "":
+        return buildResponse("400 Bad Request", "text/plain", "Invalid image path")
+
+    image_name = image_path[3]  
+    #image_name contains the name of image & image type like "cat.jpg" or "elephant.jpg"
+    image_file_path = "public/user-image/" + image_name
+
+    #See if requested image exists
+    if not os.path.exists(image_file_path):
+        return buildResponse("404 Not Found", "text/plain", "Image not found")
+    
+    readfile = imageReader(image_file_path)
+    return buildImageResponse("200 OK", "image/jpeg", readfile)
+
 #---server_register---#
 #   -Parameters: A request object
 #   -Returns: 302 Found redirect (sends user back to homepage)
@@ -404,9 +426,13 @@ def server_multipart_form(request:Request):
                     filename = filename = str(uuid.uuid4()) + ".jpg"
             upload_path = os.path.join("/public/user-image", filename)
 
+            if not os.path.exists("/public/user-image"):
+                os.makedirs("/public/user-image")
+
             #Write image file to image directory
-            f = open(upload_path, "wb")
+            f = open(upload_path[1:], "wb") #Python did not like the first "/" in the file path before public as in </>public/...
             f.write(part.content)
+            f.close()
 
             #Also for security, replace "/"s in the filename from user
             if part.filename is not None:
@@ -414,6 +440,4 @@ def server_multipart_form(request:Request):
 
             message = f'<img src="{upload_path}" alt="User Uploaded Image"/>'
             dbHandler.insertChatMessage(username, message)
-            buildRedirectResponse(req_http, "302 Found", "/")
-
-    return
+    return buildRedirectResponse(req_http, "302 Found", "/")
