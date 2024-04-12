@@ -110,7 +110,7 @@ function welcome() {
     } else {
         const videoElem = document.getElementsByClassName('video-chat')[0];
         videoElem.parentElement.removeChild(videoElem);
-        setInterval(updateChat, 2000);
+        setInterval(updateChat, 3500);
     }
 
     // use this line to start your video without having to click a button. Helpful for debugging

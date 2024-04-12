@@ -24,6 +24,7 @@ router.add_route("POST", "/logout$", server_logout)
 
 router.add_route("POST", "/form-path$", server_multipart_form)
 router.add_route("GET", "/public/user-image/.", server_user_image)
+router.add_route("GET", "/public/user-video/.", server_user_video)
 #Need to prevent "/" or remove them after /public/user-image/.
 
 class MyTCPHandler(socketserver.BaseRequestHandler):
@@ -60,6 +61,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         
         request.body = req_body
 
+        print("6--- BEFORE GOING TO ROUTE THE REQUEST")
         response = router.route_request(request)
         self.request.sendall(response)
 

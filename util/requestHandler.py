@@ -319,6 +319,28 @@ def server_user_image(request:Request):
     readfile = imageReader(image_file_path)
     return buildImageResponse("200 OK", "image/jpeg", readfile)
 
+def server_user_video(request:Request):
+    req_path = request.path
+
+    video_path = req_path.split("/")
+    #If path is: "/public/user-video/cat.mp4"
+    #image_path looks like: ['', 'public', 'image', 'cat.mp4']
+
+    #Check if video path is invalid path
+    if len(video_path) != 4 or video_path[3] == "":
+        return buildResponse("400 Bad Request", "text/plain", "Invalid image path")
+
+    video_name = video_path[3]  
+    #image_name contains the name of video & video type like "cat.mp4" or "elephant.mp4"
+    video_file_path = "public/user-video/" + video_name
+
+    #See if requested video exists
+    if not os.path.exists(video_file_path):
+        return buildResponse("404 Not Found", "text/plain", "Image not found")
+    
+    readfile = imageReader(video_file_path)
+    return buildImageResponse("200 OK", "video/mp4", readfile)
+
 #---server_register---#
 #   -Parameters: A request object
 #   -Returns: 302 Found redirect (sends user back to homepage)
@@ -407,9 +429,54 @@ def server_logout(request:Request):
     else:
         return buildRedirectResponse(req_http, "302 Found", "/")
 
+#---handle_image_upload---#
+#  -Helper function to send chat messages regarding image uploads
+def handle_image_upload(part, username):
+    # Create a new filename and path for the image
+    filename = str(uuid.uuid4()) + ".jpg"
+    if dbHandler.filename_checker(filename):
+        while dbHandler.filename_checker(filename):
+            filename = filename = str(uuid.uuid4()) + ".jpg"
+    upload_path = os.path.join("/public/user-image", filename)
+
+    if not os.path.exists("/public/user-image"):
+        os.makedirs("/public/user-image")
+
+    #Write image file to image directory
+    f = open(upload_path[1:], "wb") #Python did not like the first "/" in the file path before public as in </>public/...
+    f.write(part.content)
+    f.close()
+
+    # Create chat message for image
+    message = f'<img src="{upload_path}" alt="User Uploaded Image"/>'
+    dbHandler.insertChatMessage(username, message)
+
+#---handle_video_upload---#
+#  -Helper function to send chat messages regarding video uploads
+def handle_video_upload(part, username):
+    # Create a new filename and path for the video
+    filename = str(uuid.uuid4()) + ".mp4"
+    if dbHandler.filename_checker(filename):
+        while dbHandler.filename_checker(filename):
+            filename = filename = str(uuid.uuid4()) + ".mp4"
+    upload_path = os.path.join("/public/user-video", filename)
+
+    if not os.path.exists("/public/user-video"):
+        os.makedirs("/public/user-video")
+
+    #Write image file to image directory
+    f = open(upload_path[1:], "wb") #Python did not like the first "/" in the file path before public as in </>public/...
+    f.write(part.content)
+    f.close()
+
+    # Create chat message for video using HTML video element
+    message = f'<video width="320" height="240" controls><source src="{upload_path}" type="video/mp4"></video>'
+    dbHandler.insertChatMessage(username, message)
+
 #---server_multipart_form---#
 #  -Objective: Respond to an image upload by sending the filename as a chat message 
 def server_multipart_form(request:Request):
+    print("1--- WE ARE GOING TO DO MULTIPART")
     req_cookies = request.cookies
     req_http = request.http_version
     multipart_data = multipart.parse_multipart(request)
@@ -418,26 +485,16 @@ def server_multipart_form(request:Request):
     #Check each part of the multipart form for the uploaded image
     for part in multipart_data.parts:
         if part.name == "upload":
-            #Create a new filename and path for the image 
+            #Get user given filename to determine type of file
+            filename = part.filename
+            print("5---THE FILENAME IS: ", str(filename))
 
-            filename = str(uuid.uuid4()) + ".jpg"
-            if dbHandler.filename_checker(filename):
-                while dbHandler.filename_checker(filename):
-                    filename = filename = str(uuid.uuid4()) + ".jpg"
-            upload_path = os.path.join("/public/user-image", filename)
+            if filename.endswith(".jpeg") or filename.endswith(".jpg"):
+                print("2--- WE ARE ABOUT TO HANDLE IMAGE UPLOAD: ")
+                handle_image_upload(part, username)
+            elif filename.endswith(".mp4"):
+                print("3--- WE ARE ABOUT TO HANDLE VIDEO UPLOAD")
+                handle_video_upload(part, username)
 
-            if not os.path.exists("/public/user-image"):
-                os.makedirs("/public/user-image")
-
-            #Write image file to image directory
-            f = open(upload_path[1:], "wb") #Python did not like the first "/" in the file path before public as in </>public/...
-            f.write(part.content)
-            f.close()
-
-            #Also for security, replace "/"s in the filename from user
-            if part.filename is not None:
-                part.filename.replace("/", "")
-
-            message = f'<img src="{upload_path}" alt="User Uploaded Image"/>'
-            dbHandler.insertChatMessage(username, message)
+    print("4--- WE ARE ABOUT TO REDIRECT BACK TO HOME AFTER MULTIPART")
     return buildRedirectResponse(req_http, "302 Found", "/")
