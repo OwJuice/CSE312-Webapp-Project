@@ -54,7 +54,7 @@ def parse_ws_frame(frame):
     if masking_bit == 1:
         for index in range(len(output_object.payload)):
             mask_index = index % 4
-            output_object.payload[index] = bytes(output_object.payload[index] ^ mask_key[mask_index])
+            output_object.payload[index] = output_object.payload[index] ^ mask_key[mask_index]
 
     print("---PRINTING THE TYPES---")
     print("finbit", type(output_object.fin_bit))
@@ -80,3 +80,28 @@ def generate_ws_frame(payload):
         frame.extend(payload)
 
     return bytes(frame)
+
+def test_simple_mask():
+    byte_data = bytearray()
+    byte_data.append (0b10000000) #fin bit and opcode
+    byte_data.append (0b10010110) #payload len
+    #mask
+    byte_data.append (0b10101100)
+    byte_data.append (0b01100100)
+    byte_data.append (0b00100100)
+    byte_data.append (0b00100100)
+    #payLoad
+    byte_data.append (0b01101010)
+    byte_data.append (0b01000110)
+    print (byte_data)
+    parsed_data = parse_ws_frame (byte_data)
+    print("fin bit:" + str(parsed_data.fin_bit))
+    print("opcode: " + str(parsed_data.opcode))
+    print("payload length: " + str(parsed_data.payload_length))
+    print("payload:" + str(parsed_data.payload))
+    created = generate_ws_frame(parsed_data.payload)
+    print()
+    print (created)
+
+if __name__ == '__main__':
+    test_simple_mask()
