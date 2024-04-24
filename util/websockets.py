@@ -12,7 +12,7 @@ def compute_accept(websocket_key):
     guid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
     concatenated_key = websocket_key + guid
     encoded_key = concatenated_key.encode()
-    sha1_hash = hashlib.sha1(encoded_key).decode()
+    sha1_hash = hashlib.sha1(encoded_key).digest()
     accept_key = base64.b64encode(sha1_hash).decode()
 
     return accept_key
@@ -23,10 +23,10 @@ def parse_ws_frame(frame):
 
     # NOTE: Result of bitwise operations in python get converted to ints
     #Get Fin bit by masking with 0b10000000
-    output_object.fin_bit = int.from_bytes((frame[0] & 0b10000000) >> 7) #This shifts right by 7 and only gets the fin bit.
+    output_object.fin_bit = frame[0] & 0b10000000 >> 7 #This shifts right by 7 and only gets the fin bit.
     
     #Get opcode by masking with 0b00001111
-    output_object.opcode = int.from_bytes((frame[0] & 0b00001111))
+    output_object.opcode = (frame[0] & 0b00001111)
 
     #Get masking bit
     masking_bit = (frame[1] & 0b10000000) >> 7
