@@ -23,7 +23,7 @@ def parse_ws_frame(frame):
 
     # NOTE: Result of bitwise operations in python get converted to ints
     #Get Fin bit by masking with 0b10000000
-    output_object.fin_bit = frame[0] & 0b10000000 >> 7 #This shifts right by 7 and only gets the fin bit.
+    output_object.fin_bit = (frame[0] & 0b10000000) >> 7 #This shifts right by 7 and only gets the fin bit.
     
     #Get opcode by masking with 0b00001111
     output_object.opcode = (frame[0] & 0b00001111)
@@ -54,8 +54,13 @@ def parse_ws_frame(frame):
     if masking_bit == 1:
         for index in range(len(output_object.payload)):
             mask_index = index % 4
-            output_object.payload[index] = output_object.payload[index] ^ mask_key[mask_index]
+            output_object.payload[index] = bytes(output_object.payload[index] ^ mask_key[mask_index])
 
+    print("---PRINTING THE TYPES---")
+    print("finbit", type(output_object.fin_bit))
+    print("opcode", type(output_object.opcode))
+    print("payload len", type(output_object.payload_length))
+    print("payload", type(output_object.payload))
     return output_object
 
 def generate_ws_frame(payload):
