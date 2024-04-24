@@ -71,12 +71,12 @@ def main():
 
     socketserver.TCPServer.allow_reuse_address = True
 
-    server = socketserver.TCPServer((host, port), MyTCPHandler)
+    server = socketserver.ThreadingTCPServer((host, port), MyTCPHandler)
 
     print("Listening on port " + str(port))
 
     server.serve_forever()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": 
     main()
