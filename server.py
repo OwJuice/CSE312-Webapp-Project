@@ -27,6 +27,8 @@ router.add_route("GET", "/public/user-image/.", server_user_image)
 router.add_route("GET", "/public/user-video/.", server_user_video)
 #Need to prevent "/" or remove them after /public/user-image/.
 
+#router.add_route("GET", "/websocket", server_<Some websocket function to be served>)
+
 class MyTCPHandler(socketserver.BaseRequestHandler):
 
     def handle(self):

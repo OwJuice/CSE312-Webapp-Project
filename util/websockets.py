@@ -3,10 +3,10 @@ import base64
 
 class Parsed_Frame:
     def __init__(self):
-        self.fin_bit = None
-        self.opcode = None
-        self.payload_length = None
-        self.payload = None
+        self.fin_bit = 0
+        self.opcode = 0
+        self.payload_length = 0
+        self.payload = bytearray()
 
 def compute_accept(websocket_key):
     guid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
@@ -80,28 +80,3 @@ def generate_ws_frame(payload):
         frame.extend(payload)
 
     return bytes(frame)
-
-def test_simple_mask():
-    byte_data = bytearray()
-    byte_data.append (0b10000000) #fin bit and opcode
-    byte_data.append (0b10010110) #payload len
-    #mask
-    byte_data.append (0b10101100)
-    byte_data.append (0b01100100)
-    byte_data.append (0b00100100)
-    byte_data.append (0b00100100)
-    #payLoad
-    byte_data.append (0b01101010)
-    byte_data.append (0b01000110)
-    print (byte_data)
-    parsed_data = parse_ws_frame (byte_data)
-    print("fin bit:" + str(parsed_data.fin_bit))
-    print("opcode: " + str(parsed_data.opcode))
-    print("payload length: " + str(parsed_data.payload_length))
-    print("payload:" + str(parsed_data.payload))
-    created = generate_ws_frame(parsed_data.payload)
-    print()
-    print (created)
-
-if __name__ == '__main__':
-    test_simple_mask()
