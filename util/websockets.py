@@ -49,7 +49,7 @@ def parse_ws_frame(frame):
         mask_key = frame[:4]
         frame = frame[4:]
     
-    output_object.payload = frame #This payload data is still masked. We must XOR with the mask to unmask
+    output_object.payload = bytearray(frame) #This payload data is still masked. We must XOR with the mask to unmask
 
     if masking_bit == 1:
         for index in range(len(output_object.payload)):
