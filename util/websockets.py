@@ -56,11 +56,11 @@ def parse_ws_frame(frame):
             mask_index = index % 4
             output_object.payload[index] = output_object.payload[index] ^ mask_key[mask_index]
 
-    print("---PRINTING THE TYPES---")
-    print("finbit", type(output_object.fin_bit))
-    print("opcode", type(output_object.opcode))
-    print("payload len", type(output_object.payload_length))
-    print("payload", type(output_object.payload))
+    # print("---PRINTING THE TYPES---")
+    # print("finbit", type(output_object.fin_bit))
+    # print("opcode", type(output_object.opcode))
+    # print("payload len", type(output_object.payload_length))
+    # print("payload", type(output_object.payload))
     return output_object
 
 def generate_ws_frame(payload):

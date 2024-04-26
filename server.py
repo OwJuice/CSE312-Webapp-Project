@@ -27,7 +27,11 @@ router.add_route("GET", "/public/user-image/.", server_user_image)
 router.add_route("GET", "/public/user-video/.", server_user_video)
 #Need to prevent "/" or remove them after /public/user-image/.
 
-#router.add_route("GET", "/websocket", server_<Some websocket function to be served>)
+router.add_route("GET", "/websocket", server_websocket)
+
+#-dict_of_websockets-#
+#-This variable is a dictionary storing all 
+dict_of_websockets = {}
 
 class MyTCPHandler(socketserver.BaseRequestHandler):
 
@@ -48,24 +52,38 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         req_headers = request.headers
         req_cookies = request.cookies
 
-        #Buffering: Check if the content length from multipart header is greater than the current request's length
-        whole_length = int(req_headers.get("Content-Length", 0))
+        #Get username so we have before potentially upgrading to websockets
+        if request.headers.get("Upgrade", "").lower() == "websocket":
+            # Handle as websockets
+            router.route_request(request, self) #Self is the reference to the socket handler
+            # The websocket function does the sending of responses because it has a reference to self
 
-        current_len = len(req_body)
-        while whole_length > current_len: #While content lengh < len(body)
-            new_data = self.request.recv(min(2048, whole_length - current_len))
-            #ToDo: Need to update current_len
-            current_len += len(new_data)
 
-            if not new_data:  # Check if no more data is received
-                break
-            req_body += new_data
-        
-        request.body = req_body
+            # #Need to get the random websocket key for computing accept
+            # websocket_key = request.headers.get("Sec-WebSocket-Key", "")
+            # accept_key = websockets.compute_accept(websocket_key)
+            # response = router.route_request(request, #<accept_key???>)
 
-        print("6--- BEFORE GOING TO ROUTE THE REQUEST")
-        response = router.route_request(request)
-        self.request.sendall(response)
+        else:
+            # Handle as HTTP
+            #Buffering: Check if the content length from multipart header is greater than the current request's length
+            whole_length = int(req_headers.get("Content-Length", 0))
+
+            current_len = len(req_body)
+            while whole_length > current_len: #While content lengh < len(body)
+                new_data = self.request.recv(min(2048, whole_length - current_len))
+                #ToDo: Need to update current_len
+                current_len += len(new_data)
+
+                if not new_data:  # Check if no more data is received
+                    break
+                req_body += new_data
+            
+            request.body = req_body
+
+            print("6--- BEFORE GOING TO ROUTE THE REQUEST")
+            response = router.route_request(request)
+            self.request.sendall(response)
 
 def main():
     host = "0.0.0.0"

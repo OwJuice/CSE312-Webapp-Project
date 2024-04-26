@@ -49,7 +49,7 @@ class Router:
     #   calls the function associated with that path, and then returns the bytes returned by that method.
     #   If no path for request, return 404. If multiple paths, use route added first with the add_route method.
     #---#
-    def route_request(self, request: Request):
+    def route_request(self, request: Request, socket=None):
         req_method = request.method #Use as part of key lookup
         req_path = request.path #Use as part of key lookup
         route_key = (req_method, req_path)
@@ -62,7 +62,10 @@ class Router:
             if req_method == stored_method and re.match(stored_path, req_path):
                 # Call the corresponding handler function
                 requestHandlerFunction = self.routes[(stored_method, stored_path)]
-                return requestHandlerFunction(request)
+                if socket is None:
+                    return requestHandlerFunction(request)
+                else:
+                    return requestHandlerFunction(request, socket)
 
         return buildResponse("404 Not Found", "text/plain; charset=utf-8", "The requested content does not exist :(")
         

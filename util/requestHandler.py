@@ -11,6 +11,7 @@ import bcrypt
 import json
 import uuid
 import util.multipart as multipart
+import util.websockets as websockets
 
 
 #===requestHandler.py===#
@@ -498,3 +499,47 @@ def server_multipart_form(request:Request):
 
     print("4--- WE ARE ABOUT TO REDIRECT BACK TO HOME AFTER MULTIPART")
     return buildRedirectResponse(req_http, "302 Found", "/")
+
+#---server_websocket---#
+#  -When this function is called, the TCP wants to be upgraded to websockets.
+#  -This function will add the socket to socket_dict, a global dictionary of usernames to socket connections
+socket_dict = {}
+def server_websocket(request:Request, socket):
+    #check if user is authenticated, using cookies from socket's request , request.cookies
+    #send the handshake, by computing the accept, socket.request.sendall(HANDSHAKE)
+    #add socket to a list of websocket connections, maybe a dictionary associated socket -> username (from cookies)
+    #begin the while true loop, where you will recv 2048 bytes
+    #in initial recv you may recieve multiple frames (back to back)
+    #check fin bit if 0, need to aggregate body over next couple frames
+    #buffer for current frame *always* even if fin bit is 0, as fin and buffering NOT mutually exclusive
+
+    #check if user is authenticated, using cookies from socket's request , request.cookies
+    username = get_username(request.cookies)
+    
+    #send the handshake, by computing the accept, socket.request.sendall(HANDSHAKE)
+    websocket_key = request.headers.get("Sec-WebSocket-Key", "")
+    accept_key = websockets.compute_accept(websocket_key)
+
+    encoded_string = "Upgraded to Websockets".encode
+    length_of_string = str(len(encoded_string))
+    socket.request.sendall("HTTP/1.1 101 Switching Protocols\r\nX-Content-Type-Options: nosniff\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + length_of_string + "\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Accept: " + accept_key + "\r\n\r\n").encode() + encoded_string
+    
+    #add socket to a list of websocket connections, maybe a dictionary associated socket -> username (from cookies)
+    socket_dict[username] = socket
+
+    # Have a variable containing leftover bytes
+    extra_bytes = bytearray()
+    #begin the while true loop, where you will recv 2048 bytes
+    while True:
+        if extra_bytes:
+            #There are extra bytes
+            #Use those bytes as beginning of the next frame
+            
+        else:
+            #No extra bytes
+
+        received_data = socket.request.recv(2048) #This received data should be one, part of, or multiple websocket frame(s)
+        #in initial recv you may recieve multiple frames (back to back)
+
+        #check fin bit if 0, need to aggregate body over next couple frames
+        #buffer for current frame *always* even if fin bit is 0, as fin and buffering NOT mutually exclusive
