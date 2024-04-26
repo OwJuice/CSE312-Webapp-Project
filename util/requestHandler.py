@@ -527,16 +527,47 @@ def server_websocket(request:Request, socket):
     #add socket to a list of websocket connections, maybe a dictionary associated socket -> username (from cookies)
     socket_dict[username] = socket
 
-    # Have a variable containing leftover bytes
-    extra_bytes = bytearray()
+    # Have a variable containing leftover bytes, which will be prepended if we read a next frame
+    current_data = bytearray()
+    # Have variable for payloads set aside while looking at continuation frames
+    current_payload = bytearray()
     #begin the while true loop, where you will recv 2048 bytes
     while True:
-        if extra_bytes:
-            #There are extra bytes
+        if current_data:
+            #There are extra bytes/current data to be used
             #Use those bytes as beginning of the next frame
-            
+            pass
+
+        #Prepend current data to newly received data. The prepended data might be extra 
+        #current_data = current_data + socket.request.recv(2048 - )
         else:
-            #No extra bytes
+            # We have no previous data so this is the beginning of a frame.
+            current_data = socket.request.recv(2048)
+            parsed_frame = websockets.parse_ws_frame(current_data) #Keep in mind that this might be less than or more than 1 actual frame
+            # Find out how many frames we've read
+            actual_payload_length = parsed_frame.payload_length
+            read_payload_length = len(parsed_frame.payload) #This might not be 1 payload, but may have a payload and headers of next frame
+            # If read < actual payload length bytes, buffer
+            if read_payload_length < actual_payload_length:
+                while actual_payload_length > read_payload_length:
+                    new_data = socket.request.recv(min(2048, actual_payload_length - read_payload_length))
+                    read_payload_length += len(new_data)
+                    if not new_data:  # Check if no more data is received
+                        break
+                    current_data += new_data
+                # Now we have all data for a single frame that we needed to buffer for
+                # Create a frame as the responsegit
+                response = websockets.generate_ws_frame(current_data)
+                pass
+            # If read > actual payload length bytes, store extra bytes as start of next frame
+            elif read_payload_length > actual_payload_length:
+                pass
+
+            # Keep parsing until fin bit is 1. So if 0, keep parsing
+            current_fin_bit = parsed_frame.fin_bit
+            if (current_fin_bit == 0):
+                
+            
 
         received_data = socket.request.recv(2048) #This received data should be one, part of, or multiple websocket frame(s)
         #in initial recv you may recieve multiple frames (back to back)

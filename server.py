@@ -53,7 +53,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         req_cookies = request.cookies
 
         #Get username so we have before potentially upgrading to websockets
-        if request.headers.get("Upgrade", "").lower() == "websocket":
+        if request.headers.get("Upgrade", "") == "websocket":
             # Handle as websockets
             router.route_request(request, self) #Self is the reference to the socket handler
             # The websocket function does the sending of responses because it has a reference to self
@@ -82,7 +82,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             request.body = req_body
 
             print("6--- BEFORE GOING TO ROUTE THE REQUEST")
-            response = router.route_request(request)
+            response = router.route_request(request, None)
             self.request.sendall(response)
 
 def main():
