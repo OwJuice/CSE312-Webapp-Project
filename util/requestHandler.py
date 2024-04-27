@@ -556,16 +556,18 @@ def server_websocket(request:Request, socket):
                         break
                     current_data += new_data
                 # Now we have all data for a single frame that we needed to buffer for
-                # Create a frame as the responsegit
+                # Create a frame as the response
                 response = websockets.generate_ws_frame(current_data)
                 pass
             # If read > actual payload length bytes, store extra bytes as start of next frame
-            elif read_payload_length > actual_payload_length:
+            elif read_payload_length > actual_payload_length
+
                 pass
 
             # Keep parsing until fin bit is 1. So if 0, keep parsing
             current_fin_bit = parsed_frame.fin_bit
             if (current_fin_bit == 0):
+                pass
                 
             
 
