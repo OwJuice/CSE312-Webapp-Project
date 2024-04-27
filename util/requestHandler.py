@@ -505,6 +505,7 @@ def server_multipart_form(request:Request):
 #  -This function will add the socket to socket_dict, a global dictionary of usernames to socket connections
 socket_dict = {}
 def server_websocket(request:Request, socket):
+    #---The General Flow---#
     #check if user is authenticated, using cookies from socket's request , request.cookies
     #send the handshake, by computing the accept, socket.request.sendall(HANDSHAKE)
     #add socket to a list of websocket connections, maybe a dictionary associated socket -> username (from cookies)
@@ -512,6 +513,7 @@ def server_websocket(request:Request, socket):
     #in initial recv you may recieve multiple frames (back to back)
     #check fin bit if 0, need to aggregate body over next couple frames
     #buffer for current frame *always* even if fin bit is 0, as fin and buffering NOT mutually exclusive
+    #----------------------#
 
     #check if user is authenticated, using cookies from socket's request , request.cookies
     username = get_username(request.cookies)
@@ -527,12 +529,67 @@ def server_websocket(request:Request, socket):
     #add socket to a list of websocket connections, maybe a dictionary associated socket -> username (from cookies)
     socket_dict[username] = socket
 
-    # Have a variable containing leftover bytes, which will be prepended if we read a next frame
-    current_data = bytearray()
-    # Have variable for payloads set aside while looking at continuation frames
-    current_payload = bytearray()
-    #begin the while true loop, where you will recv 2048 bytes
+    # Variable containing extra bytes due to overreading back to back frames
+    extra_bytes = bytearray()
+    # Variable containing the running payload if we have continuation frames
+    running_payload = bytearray()
+    #begin the while true loop, where you will recv 2048 bytes (We are in websocket mode now baby)
     while True:
+        # Our received data from reading will be prepending by potential extra bytes from previous iteration of the loop. This means that we will
+        # have seen continuation frames before with a fin bit = 0. We will subtract this from 2048, meaning we will always work with <= 2048 bytes 
+        # at a time
+        received_data = extra_bytes + socket.request.recv(2048 - len(extra_bytes))
+        parsed_frame_data = websockets.parse_ws_frame(received_data)
+        official_payload_length = parsed_frame_data.payload_length
+        read_payload_length = len(parsed_frame_data.payload)
+
+        #Check the fin bit. If 0, then we have continuation frames. If 1, then we can send a response.
+        if parsed_frame_data.fin_bit == 0:
+            # Check the official payload length vs what we read to determine buffering or backtoback extra bytes
+
+            # Buffering:
+            if read_payload_length < official_payload_length:
+                running_payload.extend(parsed_frame_data.payload) # This uses the initial data we read
+                while official_payload_length > read_payload_length:
+                    new_data = socket.request.recv(min(2048, official_payload_length - read_payload_length))
+                    read_payload_length += len(new_data)
+                    if not new_data:
+                        break
+                    running_payload.extend(new_data) # This uses the new data we are getting
+                # After finishing buffering to get the whole frame, go back to top of loop until we hit that fin bit of 1
+                continue
+
+            # Back to back (Extra):
+            elif read_payload_length > official_payload_length:
+                extra_bytes = parsed_frame_data.payload[official_payload_length:] #Extra is everything after official payload bytes
+                extra_bytes_len = len(extra_bytes)
+                running_payload.extend(parsed_frame_data.payload[:extra_bytes_len]) #We are concatenating one frame we have just read, without the extra bytes
+                # After finishing storing extra bytes and concatenating to our running payload, go back to top of loop until we hit that fin bit of 1
+        
+        elif parsed_frame_data.fin_bit == 1:
+            # Check the official payload length vs what we read to determine buffering or backtoback extra bytes
+
+            # Buffering:
+            if read_payload_length < official_payload_length:
+                running_payload.extend(parsed_frame_data.payload) # This uses the initial data we read
+                while official_payload_length > read_payload_length:
+                    new_data = socket.request.recv(min(2048, official_payload_length - read_payload_length))
+                    read_payload_length += len(new_data)
+                    if not new_data:
+                        break
+                    running_payload.extend(new_data) # This uses the new data we are getting
+                # We can now send frame after getting this last frame that we needed to buffer. Our running payload is now the full payload to send.
+                response_frame = websockets.generate_ws_frame(running_payload)
+                # TODO: Generate the message according to the hw doc and save message in database and sendall to each websocket connection
+            
+            # TODO: DO back to back for fin bit of 1.
+            
+
+
+
+
+        #------------------------------THE FOLLOWING IS OLD CODE: -------------------------------#
+
         if current_data:
             #There are extra bytes/current data to be used
             #Use those bytes as beginning of the next frame
