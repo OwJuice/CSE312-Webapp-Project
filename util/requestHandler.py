@@ -115,6 +115,26 @@ def get_username(req_cookies: dict):
         username = "Guest"
     return username
 
+# A helper function to create a chat message payload when using websockets
+def create_chat_message(username, safe_message):
+    #Insert the message into the database
+    message_id = dbHandler.insertChatMessage(username, safe_message)
+
+    # Create a dictionary representing the message content
+    message_dict = {
+        'messageType': 'chatMessage',
+        'username': username,
+        'message': safe_message,
+        'id': message_id
+    }
+    
+    # Convert the dictionary into a JSON string
+    json_string = json.dumps(message_dict)
+    
+    # Encode the JSON string into bytes using UTF-8 encoding
+    payload = json_string.encode('utf-8')
+    return payload
+
 def server_root(request:Request):
     req_cookies = request.cookies
 
@@ -503,7 +523,7 @@ def server_multipart_form(request:Request):
 #---server_websocket---#
 #  -When this function is called, the TCP wants to be upgraded to websockets.
 #  -This function will add the socket to socket_dict, a global dictionary of usernames to socket connections
-socket_dict = {}
+socket_set = set()
 def server_websocket(request:Request, socket):
     #---The General Flow---#
     #check if user is authenticated, using cookies from socket's request , request.cookies
@@ -527,7 +547,7 @@ def server_websocket(request:Request, socket):
     socket.request.sendall("HTTP/1.1 101 Switching Protocols\r\nX-Content-Type-Options: nosniff\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + length_of_string + "\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Accept: " + accept_key + "\r\n\r\n").encode() + encoded_string
     
     #add socket to a list of websocket connections, maybe a dictionary associated socket -> username (from cookies)
-    socket_dict[username] = socket
+    socket_set.add(socket)
 
     # Variable containing extra bytes due to overreading back to back frames
     extra_bytes = bytearray()
@@ -540,6 +560,12 @@ def server_websocket(request:Request, socket):
         # at a time
         received_data = extra_bytes + socket.request.recv(2048 - len(extra_bytes))
         parsed_frame_data = websockets.parse_ws_frame(received_data)
+
+        # Handle disconnections here:
+        if parsed_frame_data.opcode == 8:
+            socket_set.discard(socket)
+            break
+
         official_payload_length = parsed_frame_data.payload_length
         read_payload_length = len(parsed_frame_data.payload)
 
@@ -560,14 +586,13 @@ def server_websocket(request:Request, socket):
                 continue
 
             # Back to back (Extra):
-            elif read_payload_length > official_payload_length:
+            elif read_payload_length >= official_payload_length:
                 extra_bytes = parsed_frame_data.payload[official_payload_length:] #Extra is everything after official payload bytes
-                extra_bytes_len = len(extra_bytes)
-                running_payload.extend(parsed_frame_data.payload[:extra_bytes_len]) #We are concatenating one frame we have just read, without the extra bytes
+                running_payload.extend(parsed_frame_data.payload[:official_payload_length]) #We are concatenating one frame we have just read, without the extra bytes
                 # After finishing storing extra bytes and concatenating to our running payload, go back to top of loop until we hit that fin bit of 1
         
         elif parsed_frame_data.fin_bit == 1:
-            # Check the official payload length vs what we read to determine buffering or backtoback extra bytes
+            # Check the official payload length vs what we read to deter                                                                                                                                                                mine buffering or backtoback extra bytes
 
             # Buffering:
             if read_payload_length < official_payload_length:
@@ -578,12 +603,31 @@ def server_websocket(request:Request, socket):
                     if not new_data:
                         break
                     running_payload.extend(new_data) # This uses the new data we are getting
-                # We can now send frame after getting this last frame that we needed to buffer. Our running payload is now the full payload to send.
-                response_frame = websockets.generate_ws_frame(running_payload)
-                # TODO: Generate the message according to the hw doc and save message in database and sendall to each websocket connection
+                # Now we have a full message that we can extract from the payload
+                full_message = websockets.extract_payload_message(running_payload)
+                safe_message = htmlInjectionPreventer(full_message)
+                # Create the payload response and insert message into database
+                payload_response = create_chat_message(username, safe_message)
+                
+                # Send the payload message to all websocket connections in our datastructure of sockets
+                for websocket_connection in socket_set:
+                    websocket_connection.request.sendall(payload_response)
+                # Now the full message has been saved to the database AND sent to all websocket connections we have stored
             
             # TODO: DO back to back for fin bit of 1.
-            
+            elif read_payload_length >= official_payload_length:
+                extra_bytes = parsed_frame_data.payload[official_payload_length:] #Extra is everything after official payload bytes
+                running_payload.extend(parsed_frame_data.payload[:official_payload_length]) #We are concatenating one frame we have just read, without the extra bytes
+                # Now we have a full message that we can extract from the payload
+                full_message = websockets.extract_payload_message(running_payload)
+                safe_message = htmlInjectionPreventer(full_message)
+                # Create the payload response and insert message into database
+                payload_response = create_chat_message(username, safe_message)
+                
+                # Send the payload message to all websocket connections in our datastructure of sockets
+                for websocket_connection in socket_set:
+                    websocket_connection.request.sendall(payload_response)
+                # Now the full message has been saved to the database AND sent to all websocket connections we have stored
 
 
 

@@ -1,5 +1,6 @@
 import hashlib
 import base64
+import json
 
 class Parsed_Frame:
     def __init__(self):
@@ -80,3 +81,13 @@ def generate_ws_frame(payload):
         frame.extend(payload)
 
     return bytes(frame)
+
+#---extract_payload_message---#
+#  -Objective: A helper function that takes a given payload and extracts only the message from it. It ignores the messageTypes.
+#  -Parameters: A bytearray of the payload for frame(s)
+#  -Return: message in string format
+def extract_payload_message(payload):
+    json_string = payload.decode('utf-8')
+    json_data = json.loads(json_string) #Our data may be multiple payloads from multiple frames
+    message = json_data.get('message', '')
+    return message
