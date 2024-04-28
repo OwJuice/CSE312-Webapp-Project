@@ -551,144 +551,150 @@ def server_websocket(request:Request, socket):
     #add socket to a list of websocket connections, maybe a dictionary associated socket -> username (from cookies)
     socket_set.add(socket)
 
-    # Variable containing extra bytes due to overreading back to back frames
-    extra_bytes = bytearray()
-    # Variable containing the running payload if we have continuation frames
-    running_payload = bytearray()
+    # Variable containing the running message if we have continuation frames
+    running_message = ""
     #begin the while true loop, where you will recv 2048 bytes (We are in websocket mode now)
-    while socket in socket_set:
-        # Our received data from reading will be prepending by potential extra bytes from previous iteration of the loop. This means that we will
-        # have seen continuation frames before with a fin bit = 0. We will subtract this from 2048, meaning we will always work with <= 2048 bytes 
-        # at a time
-        print("5--- WE ARE IN THE WHILE TRUE LOOP")
-        print("5.1--- THE EXTRA BYTES ARE: ", extra_bytes)
-        print("5.2--- THE LENGTH OF EXTRA BYTES ARE: ", len(extra_bytes))
-        received_data = extra_bytes + socket.request.recv(2048 - len(extra_bytes))
-        #received_data = socket.request.recv(2048)
-        print("6--- THE RECEIVED DATA IS: ", received_data)
-        parsed_frame_data = websockets.parse_ws_frame(received_data)
-        print("7.0--- THE PARSED FRAME DATA FIN BIT IS: ", parsed_frame_data.fin_bit)
-        print("7.1--- THE PARSED FRAME DATA OP CODE IS: ", parsed_frame_data.opcode)
-        print("7.2--- THE PARSED FRAME DATA PAYLOAD LENGTH IS: ", parsed_frame_data.payload_length)
-        #print("7.3--- THE PARSED FRAME DATA PAYLOAD DECODED IS: ", parsed_frame_data.payload.decode())
-
-        # Handle disconnections here:
-        if parsed_frame_data.opcode == 8:
-            print("8.0--- WE ARE IN DISCONNECT CODE")
-            print("8.1--- SOCKET SET BEFORE DISCARDING: ", socket_set)
-            socket_set.discard(socket)
-            print("8.2--- SOCKET SET AFTER DISCARDING: ", socket_set)
-
-        print("9.0--- OUT OF DISCONNECT CODE")
-        official_payload_length = parsed_frame_data.payload_length
-        print("9.1--- OFFICIAL PAYLOAD LENGTH: ", official_payload_length)
-        read_payload_length = len(parsed_frame_data.payload)
-
-        #Check the fin bit. If 0, then we have continuation frames. If 1, then we can send a response.
-        if parsed_frame_data.fin_bit == 0:
-            # Check the official payload length vs what we read to determine buffering or backtoback extra bytes
-
-            # Buffering:
-            if read_payload_length < official_payload_length:
-                running_payload.extend(parsed_frame_data.payload) # This uses the initial data we read
-                while official_payload_length > read_payload_length:
-                    new_data = socket.request.recv(min(2048, official_payload_length - read_payload_length))
-                    read_payload_length += len(new_data)
-                    if not new_data:
-                        break
-                    running_payload.extend(new_data) # This uses the new data we are getting
-                # After finishing buffering to get the whole frame, go back to top of loop until we hit that fin bit of 1
-                continue
-
-            # Back to back (Extra):
-            elif read_payload_length >= official_payload_length:
-                extra_bytes = parsed_frame_data.payload[official_payload_length:] #Extra is everything after official payload bytes
-                running_payload.extend(parsed_frame_data.payload[:official_payload_length]) #We are concatenating one frame we have just read, without the extra bytes
-                # After finishing storing extra bytes and concatenating to our running payload, go back to top of loop until we hit that fin bit of 1
+    while True:
         
-        elif parsed_frame_data.fin_bit == 1:
-            # Check the official payload length vs what we read to deter                                                                                                                                                                mine buffering or backtoback extra bytes
+        #Call helper function to get a full frame, we don't know if this frame is continuous yet (fin bit 0 or 1 yet).
+        received_data = websockets.recieve_bytes(socket) # This gets exactly one frame's data, meaning we don't have to buffer or have extra bytes from back to back
+        if received_data is None:
+            socket_set.discard(socket)
+            break
+        else:
+            parsed_frame_data = websockets.parse_ws_frame(received_data)
 
-            # Buffering:
-            if read_payload_length < official_payload_length:
-                running_payload.extend(parsed_frame_data.payload) # This uses the initial data we read
-                while official_payload_length > read_payload_length:
-                    new_data = socket.request.recv(min(2048, official_payload_length - read_payload_length))
-                    read_payload_length += len(new_data)
-                    if not new_data:
-                        break
-                    running_payload.extend(new_data) # This uses the new data we are getting
-                # Now we have a full message that we can extract from the payload
-                full_message = websockets.extract_payload_message(running_payload)
-                safe_message = htmlInjectionPreventer(full_message)
+            #Check fin bit to determine if we need to handle continuation frames
+            fin_bit = parsed_frame_data.fin_bit
+
+            if fin_bit == 0:
+                #We have continuation so extract this frame's message and add it to our running message
+                running_message += websockets.extract_payload_message(parsed_frame_data.payload)
+            elif fin_bit == 1:
+                #We will have the full message and can send all now
+                running_message += websockets.extract_payload_message(parsed_frame_data.payload)
+
+                # Ensure that the message is html escaped and is safe
+                safe_message = htmlInjectionPreventer(running_message)
+                # Also, after using the running_message, empty it out for the next message
+                running_message = ""
                 # Create the payload response and insert message into database
                 payload_response = create_chat_message(username, safe_message)
+                #Generate a frame as a response
+                frame_response = websockets.generate_ws_frame(payload_response)
                 
                 # Send the payload message to all websocket connections in our datastructure of sockets
                 for websocket_connection in socket_set:
-                    websocket_connection.request.sendall(payload_response)
-                # Now the full message has been saved to the database AND sent to all websocket connections we have stored
-            
-            # TODO: DO back to back for fin bit of 1.
-            elif read_payload_length >= official_payload_length:
-                extra_bytes = parsed_frame_data.payload[official_payload_length:] #Extra is everything after official payload bytes
-                running_payload.extend(parsed_frame_data.payload[:official_payload_length]) #We are concatenating one frame we have just read, without the extra bytes
-                # Now we have a full message that we can extract from the payload
-                full_message = websockets.extract_payload_message(running_payload)
-                safe_message = htmlInjectionPreventer(full_message)
-                # Create the payload response and insert message into database
-                payload_response = create_chat_message(username, safe_message)
-                
-                # Send the payload message to all websocket connections in our datastructure of sockets
-                for websocket_connection in socket_set:
-                    websocket_connection.request.sendall(payload_response)
-                # Now the full message has been saved to the database AND sent to all websocket connections we have stored
+                    websocket_connection.request.sendall(frame_response)
 
 
 
 
-        #------------------------------THE FOLLOWING IS OLD CODE: -------------------------------#
 
-        # if current_data:
-        #     #There are extra bytes/current data to be used
-        #     #Use those bytes as beginning of the next frame
-        #     pass
 
-        # #Prepend current data to newly received data. The prepended data might be extra 
-        # #current_data = current_data + socket.request.recv(2048 - )
+        #--------------------Old Code--------------------#
+
+        # # Our received data from reading will be prepending by potential extra bytes from previous iteration of the loop. This means that we will
+        # # have seen continuation frames before with a fin bit = 0. We will subtract this from 2048, meaning we will always work with <= 2048 bytes 
+        # # at a time
+        # print("5--- WE ARE IN THE WHILE TRUE LOOP")
+        # print("5.1--- THE EXTRA BYTES ARE: ", extra_bytes)
+        # print("5.2--- THE LENGTH OF EXTRA BYTES ARE: ", len(extra_bytes))
+        # #received_data = extra_bytes + socket.request.recv(2048 - len(extra_bytes))
+        # received_data = extra_bytes + socket.request.recv(2048)
+        # # After using the extra bytes, empty it out.
+        # extra_bytes = bytearray()
+        # #received_data = socket.request.recv(2048)
+        # print("6.0--- THE RECEIVED DATA IS: ", received_data)
+        # print("6.1--- THE LENGTH OF RECEIVED DATA IS: ", len(received_data))
+        # parsed_frame_data = websockets.parse_ws_frame(received_data)
+        # print("7.0--- THE PARSED FRAME DATA FIN BIT IS: ", parsed_frame_data.fin_bit)
+        # print("7.1--- THE PARSED FRAME DATA OP CODE IS: ", parsed_frame_data.opcode)
+        # print("7.2--- THE PARSED FRAME DATA PAYLOAD LENGTH IS: ", parsed_frame_data.payload_length)
+        # print("7.3--- THE PARSED FRAME DATA PAYLOAD DECODED IS: ", parsed_frame_data.payload.decode())
+
+        # # Handle disconnections here:
+        # if parsed_frame_data is None:
+        #     break
+
+        # if parsed_frame_data.opcode == 8:
+        #     print("8.0--- WE ARE IN DISCONNECT CODE")
+        #     print("8.1--- SOCKET SET BEFORE DISCARDING: ", socket_set)
+        #     socket_set.discard(socket)
+        #     print("8.2--- SOCKET SET AFTER DISCARDING: ", socket_set)
+        #     break
         # else:
-        #     # We have no previous data so this is the beginning of a frame.
-        #     current_data = socket.request.recv(2048)
-        #     parsed_frame = websockets.parse_ws_frame(current_data) #Keep in mind that this might be less than or more than 1 actual frame
-        #     # Find out how many frames we've read
-        #     actual_payload_length = parsed_frame.payload_length
-        #     read_payload_length = len(parsed_frame.payload) #This might not be 1 payload, but may have a payload and headers of next frame
-        #     # If read < actual payload length bytes, buffer
-        #     if read_payload_length < actual_payload_length:
-        #         while actual_payload_length > read_payload_length:
-        #             new_data = socket.request.recv(min(2048, actual_payload_length - read_payload_length))
-        #             read_payload_length += len(new_data)
-        #             if not new_data:  # Check if no more data is received
-        #                 break
-        #             current_data += new_data
-        #         # Now we have all data for a single frame that we needed to buffer for
-        #         # Create a frame as the response
-        #         response = websockets.generate_ws_frame(current_data)
-        #         pass
-        #     # If read > actual payload length bytes, store extra bytes as start of next frame
-        #     elif read_payload_length > actual_payload_length:
+        #     print("9.0--- NOT IN DISCONNECT CODE")
+        #     official_payload_length = parsed_frame_data.payload_length
+        #     print("9.1--- OFFICIAL PAYLOAD LENGTH: ", official_payload_length)
+        #     read_payload_length = len(parsed_frame_data.payload)
 
-        #         pass
+        #     #Check the fin bit. If 0, then we have continuation frames. If 1, then we can send a response.
+        #     if parsed_frame_data.fin_bit == 0:
+        #         # Check the official payload length vs what we read to determine buffering or backtoback extra bytes
 
-        #     # Keep parsing until fin bit is 1. So if 0, keep parsing
-        #     current_fin_bit = parsed_frame.fin_bit
-        #     if (current_fin_bit == 0):
-        #         pass
-                
+        #         # Buffering:
+        #         if read_payload_length < official_payload_length:
+        #             running_payload.extend(parsed_frame_data.payload) # This uses the initial data we read
+        #             while official_payload_length > read_payload_length:
+        #                 new_data = socket.request.recv(min(2048, official_payload_length - read_payload_length))
+        #                 read_payload_length += len(new_data)
+        #                 if not new_data:
+        #                     break
+        #                 running_payload.extend(new_data) # This uses the new data we are getting
+        #             # After finishing buffering to get the whole frame, go back to top of loop until we hit that fin bit of 1
+        #             continue
+
+        #         # Back to back (Extra):
+        #         elif read_payload_length >= official_payload_length:
+        #             extra_bytes = parsed_frame_data.payload[official_payload_length:] #Extra is everything after official payload bytes
+        #             running_payload.extend(parsed_frame_data.payload[:official_payload_length]) #We are concatenating one frame we have just read, without the extra bytes
+        #             # After finishing storing extra bytes and concatenating to our running payload, go back to top of loop until we hit that fin bit of 1
             
-
-        # received_data = socket.request.recv(2048) #This received data should be one, part of, or multiple websocket frame(s)
-        # #in initial recv you may recieve multiple frames (back to back)
-
-        # #check fin bit if 0, need to aggregate body over next couple frames
-        # #buffer for current frame *always* even if fin bit is 0, as fin and buffering NOT mutually exclusive
+        #     elif parsed_frame_data.fin_bit == 1:
+        #         # Check the official payload length vs what we read to deter                                                                                                                                                                mine buffering or backtoback extra bytes
+        #         print("10--- FINBIT IS 1")
+        #         print("10.1--- READ_LENGTH IS: ", read_payload_length)
+        #         print("10.2--- OFFICIAL LENGTH IS: ", official_payload_length)
+        #         print("10.3--- DID WE READ LESS THAN OFFICIAL?: ", read_payload_length < official_payload_length)
+        #         # Buffering:
+        #         if read_payload_length < official_payload_length:
+        #             print("11--- WE ARE IN BUFFERING BECAUSE WE READ LESS THAN OFFICIAL")
+        #             running_payload.extend(parsed_frame_data.payload) # This uses the initial data we read
+        #             while official_payload_length > read_payload_length:
+        #                 new_data = socket.request.recv(min(2048, official_payload_length - read_payload_length))
+        #                 read_payload_length += len(new_data)
+        #                 if not new_data:
+        #                     break
+        #                 running_payload.extend(new_data) # This uses the new data we are getting
+        #             # Now we have a full message that we can extract from the payload
+        #             full_message = websockets.extract_payload_message(running_payload)
+        #             safe_message = htmlInjectionPreventer(full_message)
+        #             print("12--- THIS IS THE SAFE MESSAGE: ", safe_message)
+        #             # Create the payload response and insert message into database
+        #             payload_response = create_chat_message(username, safe_message)
+                    
+        #             # Send the payload message to all websocket connections in our datastructure of sockets
+        #             for websocket_connection in socket_set:
+        #                 websocket_connection.request.sendall(payload_response)
+        #             # Now the full message has been saved to the database AND sent to all websocket connections we have stored
+        #             print("13--- THIS IS AFTER SENDING THE SAFE MESSAGE: ")
+        #         # TODO: DO back to back for fin bit of 1.
+                
+        #         elif read_payload_length >= official_payload_length:
+        #             print("11--- WE ARE IN BACK TO BACK BECAUSE WE READ MORE THAN OFFICIAL")
+        #             extra_bytes = parsed_frame_data.payload[official_payload_length:] #Extra is everything after official payload bytes
+        #             running_payload.extend(parsed_frame_data.payload[:official_payload_length]) #We are concatenating one frame we have just read, without the extra bytes
+        #             # Now we have a full message that we can extract from the payload
+        #             full_message = websockets.extract_payload_message(running_payload)
+        #             safe_message = htmlInjectionPreventer(full_message)
+        #             print("12--- THIS IS THE SAFE MESSAGE: ", safe_message)
+        #             # Create the payload response and insert message into database
+        #             payload_response = create_chat_message(username, safe_message)
+                    
+        #             # Send the payload message to all websocket connections in our datastructure of sockets
+        #             for websocket_connection in socket_set:
+        #                 websocket_connection.request.sendall(payload_response)
+        #             print("13--- THIS IS AFTER SENDING THE SAFE MESSAGE: ")
+        #             # Now the full message has been saved to the database AND sent to all websocket connections we have stored
+        #         print("99--- THIS IS AT THE END OF THE WHILE TRUE LOOP")

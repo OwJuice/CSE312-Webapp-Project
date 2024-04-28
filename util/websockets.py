@@ -84,10 +84,51 @@ def generate_ws_frame(payload):
 
 #---extract_payload_message---#
 #  -Objective: A helper function that takes a given payload and extracts only the message from it. It ignores the messageTypes.
-#  -Parameters: A bytearray of the payload for frame(s)
+#  -Parameters: A bytearray of the payload for a frame
 #  -Return: message in string format
 def extract_payload_message(payload):
+    print("97-------PAYLOAD IN EXTRACT PAYLOAD MESSAGE:", payload)
     json_string = payload.decode()
-    json_data = json.loads(json_string) #Our data may be multiple payloads from multiple frames
+    print("98-------Received JSON string:", json_string)
+    json_data = json.loads(json_string) #Our data is only from one frame
     message = json_data.get('message', '')
     return message
+
+# recieve_bytes takes a socket as a parameter to recv bytes from the socket
+def recieve_bytes(socket):
+    recieved_data = bytearray(socket.request.recv(2))
+    #Get opcode by masking with 0b00001111
+    opcode = (recieved_data[0] & 0b00001111)
+    payload_len = (recieved_data[1] & 0b01111111)
+    masking_bit = (recieved_data[1] & 0b10000000) >> 7
+
+    # Counter variable for the amount of extra bytes we need
+    extra_bytes = 0
+
+    # Don't return any bytes if we get a disconnect opcode of 8
+    if opcode == 8:
+        return None
+    else:
+        # Check how many more bytes we need to receive depending on payload length
+        if payload_len == 126:
+            recieved_data.extend(bytearray(socket.request.recv(2)))
+            payload_length = int.from_bytes(recieved_data[2:4], byteorder="big")
+            extra_bytes += payload_length
+        elif payload_len == 127:
+            recieved_data.extend(bytearray(socket.request.recv(8)))
+            payload_length = int.from_bytes(recieved_data[2:10], byteorder="big")
+            extra_bytes += payload_length
+        else:
+            payload_length = payload_len
+            extra_bytes += payload_length
+    
+        # Add on 4 bytes if we have a mask
+        if masking_bit == 1:
+            recieved_data.extend(bytearray(socket.request.recv(4)))
+
+        # Keep reading data until we have extra bytes
+        while extra_bytes != 0:
+            recieved_data.extend(bytearray(socket.request.recv(1)))
+            extra_bytes -= 1
+
+        return recieved_data
