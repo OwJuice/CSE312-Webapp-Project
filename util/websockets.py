@@ -87,7 +87,7 @@ def generate_ws_frame(payload):
 #  -Parameters: A bytearray of the payload for frame(s)
 #  -Return: message in string format
 def extract_payload_message(payload):
-    json_string = payload.decode('utf-8')
+    json_string = payload.decode()
     json_data = json.loads(json_string) #Our data may be multiple payloads from multiple frames
     message = json_data.get('message', '')
     return message

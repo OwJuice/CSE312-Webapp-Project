@@ -523,29 +523,31 @@ def server_multipart_form(request:Request):
 #---server_websocket---#
 #  -When this function is called, the TCP wants to be upgraded to websockets.
 #  -This function will add the socket to socket_dict, a global dictionary of usernames to socket connections
+#    #---The General Flow---#
+#    #check if user is authenticated, using cookies from socket's request , request.cookies
+#    #send the handshake, by computing the accept, socket.request.sendall(HANDSHAKE)
+#    #add socket to a list of websocket connections, maybe a dictionary associated socket -> username (from cookies)
+#    #begin the while true loop, where you will recv 2048 bytes
+#    #in initial recv you may recieve multiple frames (back to back)
+#    #check fin bit if 0, need to aggregate body over next couple frames
+#    #buffer for current frame *always* even if fin bit is 0, as fin and buffering NOT mutually exclusive
+#    #----------------------#
 socket_set = set()
 def server_websocket(request:Request, socket):
-    #---The General Flow---#
-    #check if user is authenticated, using cookies from socket's request , request.cookies
-    #send the handshake, by computing the accept, socket.request.sendall(HANDSHAKE)
-    #add socket to a list of websocket connections, maybe a dictionary associated socket -> username (from cookies)
-    #begin the while true loop, where you will recv 2048 bytes
-    #in initial recv you may recieve multiple frames (back to back)
-    #check fin bit if 0, need to aggregate body over next couple frames
-    #buffer for current frame *always* even if fin bit is 0, as fin and buffering NOT mutually exclusive
-    #----------------------#
+    print("1--- WE HAVE BEEN ROUTED TO WEBSOCKET FUNCTION")
 
     #check if user is authenticated, using cookies from socket's request , request.cookies
     username = get_username(request.cookies)
+    print("2--- WE GOT THE USERNAME: ", username)
     
+    print("2.5--- HERE ARE HEADERS BEFORE THE KEY: ", request.headers)
     #send the handshake, by computing the accept, socket.request.sendall(HANDSHAKE)
     websocket_key = request.headers.get("Sec-WebSocket-Key", "")
+    print("3--- WE GOT THE WEBSOCKET KEY FROM THE HEADERS")
     accept_key = websockets.compute_accept(websocket_key)
 
-    encoded_string = "Upgraded to Websockets".encode
-    length_of_string = str(len(encoded_string))
-    socket.request.sendall("HTTP/1.1 101 Switching Protocols\r\nX-Content-Type-Options: nosniff\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + length_of_string + "\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Accept: " + accept_key + "\r\n\r\n").encode() + encoded_string
-    
+    socket.request.sendall(("HTTP/1.1 101 Switching Protocols\r\nX-Content-Type-Options: nosniff\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: 0\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Accept: " + accept_key + "\r\n\r\n").encode())
+    print("4--- WE SENT AN UPGRADE RESPONSE")
     #add socket to a list of websocket connections, maybe a dictionary associated socket -> username (from cookies)
     socket_set.add(socket)
 
@@ -553,20 +555,33 @@ def server_websocket(request:Request, socket):
     extra_bytes = bytearray()
     # Variable containing the running payload if we have continuation frames
     running_payload = bytearray()
-    #begin the while true loop, where you will recv 2048 bytes (We are in websocket mode now baby)
-    while True:
+    #begin the while true loop, where you will recv 2048 bytes (We are in websocket mode now)
+    while socket in socket_set:
         # Our received data from reading will be prepending by potential extra bytes from previous iteration of the loop. This means that we will
         # have seen continuation frames before with a fin bit = 0. We will subtract this from 2048, meaning we will always work with <= 2048 bytes 
         # at a time
+        print("5--- WE ARE IN THE WHILE TRUE LOOP")
+        print("5.1--- THE EXTRA BYTES ARE: ", extra_bytes)
+        print("5.2--- THE LENGTH OF EXTRA BYTES ARE: ", len(extra_bytes))
         received_data = extra_bytes + socket.request.recv(2048 - len(extra_bytes))
+        #received_data = socket.request.recv(2048)
+        print("6--- THE RECEIVED DATA IS: ", received_data)
         parsed_frame_data = websockets.parse_ws_frame(received_data)
+        print("7.0--- THE PARSED FRAME DATA FIN BIT IS: ", parsed_frame_data.fin_bit)
+        print("7.1--- THE PARSED FRAME DATA OP CODE IS: ", parsed_frame_data.opcode)
+        print("7.2--- THE PARSED FRAME DATA PAYLOAD LENGTH IS: ", parsed_frame_data.payload_length)
+        #print("7.3--- THE PARSED FRAME DATA PAYLOAD DECODED IS: ", parsed_frame_data.payload.decode())
 
         # Handle disconnections here:
         if parsed_frame_data.opcode == 8:
+            print("8.0--- WE ARE IN DISCONNECT CODE")
+            print("8.1--- SOCKET SET BEFORE DISCARDING: ", socket_set)
             socket_set.discard(socket)
-            break
+            print("8.2--- SOCKET SET AFTER DISCARDING: ", socket_set)
 
+        print("9.0--- OUT OF DISCONNECT CODE")
         official_payload_length = parsed_frame_data.payload_length
+        print("9.1--- OFFICIAL PAYLOAD LENGTH: ", official_payload_length)
         read_payload_length = len(parsed_frame_data.payload)
 
         #Check the fin bit. If 0, then we have continuation frames. If 1, then we can send a response.
@@ -634,46 +649,46 @@ def server_websocket(request:Request, socket):
 
         #------------------------------THE FOLLOWING IS OLD CODE: -------------------------------#
 
-        if current_data:
-            #There are extra bytes/current data to be used
-            #Use those bytes as beginning of the next frame
-            pass
+        # if current_data:
+        #     #There are extra bytes/current data to be used
+        #     #Use those bytes as beginning of the next frame
+        #     pass
 
-        #Prepend current data to newly received data. The prepended data might be extra 
-        #current_data = current_data + socket.request.recv(2048 - )
-        else:
-            # We have no previous data so this is the beginning of a frame.
-            current_data = socket.request.recv(2048)
-            parsed_frame = websockets.parse_ws_frame(current_data) #Keep in mind that this might be less than or more than 1 actual frame
-            # Find out how many frames we've read
-            actual_payload_length = parsed_frame.payload_length
-            read_payload_length = len(parsed_frame.payload) #This might not be 1 payload, but may have a payload and headers of next frame
-            # If read < actual payload length bytes, buffer
-            if read_payload_length < actual_payload_length:
-                while actual_payload_length > read_payload_length:
-                    new_data = socket.request.recv(min(2048, actual_payload_length - read_payload_length))
-                    read_payload_length += len(new_data)
-                    if not new_data:  # Check if no more data is received
-                        break
-                    current_data += new_data
-                # Now we have all data for a single frame that we needed to buffer for
-                # Create a frame as the response
-                response = websockets.generate_ws_frame(current_data)
-                pass
-            # If read > actual payload length bytes, store extra bytes as start of next frame
-            elif read_payload_length > actual_payload_length
+        # #Prepend current data to newly received data. The prepended data might be extra 
+        # #current_data = current_data + socket.request.recv(2048 - )
+        # else:
+        #     # We have no previous data so this is the beginning of a frame.
+        #     current_data = socket.request.recv(2048)
+        #     parsed_frame = websockets.parse_ws_frame(current_data) #Keep in mind that this might be less than or more than 1 actual frame
+        #     # Find out how many frames we've read
+        #     actual_payload_length = parsed_frame.payload_length
+        #     read_payload_length = len(parsed_frame.payload) #This might not be 1 payload, but may have a payload and headers of next frame
+        #     # If read < actual payload length bytes, buffer
+        #     if read_payload_length < actual_payload_length:
+        #         while actual_payload_length > read_payload_length:
+        #             new_data = socket.request.recv(min(2048, actual_payload_length - read_payload_length))
+        #             read_payload_length += len(new_data)
+        #             if not new_data:  # Check if no more data is received
+        #                 break
+        #             current_data += new_data
+        #         # Now we have all data for a single frame that we needed to buffer for
+        #         # Create a frame as the response
+        #         response = websockets.generate_ws_frame(current_data)
+        #         pass
+        #     # If read > actual payload length bytes, store extra bytes as start of next frame
+        #     elif read_payload_length > actual_payload_length:
 
-                pass
+        #         pass
 
-            # Keep parsing until fin bit is 1. So if 0, keep parsing
-            current_fin_bit = parsed_frame.fin_bit
-            if (current_fin_bit == 0):
-                pass
+        #     # Keep parsing until fin bit is 1. So if 0, keep parsing
+        #     current_fin_bit = parsed_frame.fin_bit
+        #     if (current_fin_bit == 0):
+        #         pass
                 
             
 
-        received_data = socket.request.recv(2048) #This received data should be one, part of, or multiple websocket frame(s)
-        #in initial recv you may recieve multiple frames (back to back)
+        # received_data = socket.request.recv(2048) #This received data should be one, part of, or multiple websocket frame(s)
+        # #in initial recv you may recieve multiple frames (back to back)
 
-        #check fin bit if 0, need to aggregate body over next couple frames
-        #buffer for current frame *always* even if fin bit is 0, as fin and buffering NOT mutually exclusive
+        # #check fin bit if 0, need to aggregate body over next couple frames
+        # #buffer for current frame *always* even if fin bit is 0, as fin and buffering NOT mutually exclusive

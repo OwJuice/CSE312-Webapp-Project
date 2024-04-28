@@ -27,11 +27,7 @@ router.add_route("GET", "/public/user-image/.", server_user_image)
 router.add_route("GET", "/public/user-video/.", server_user_video)
 #Need to prevent "/" or remove them after /public/user-image/.
 
-router.add_route("GET", "/websocket", server_websocket)
-
-#-dict_of_websockets-#
-#-This variable is a dictionary storing all 
-dict_of_websockets = {}
+router.add_route("GET", "/websocket$", server_websocket)
 
 class MyTCPHandler(socketserver.BaseRequestHandler):
 
@@ -81,7 +77,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             
             request.body = req_body
 
-            print("6--- BEFORE GOING TO ROUTE THE REQUEST")
+            print("*--- BEFORE GOING TO ROUTE THE REQUEST")
             response = router.route_request(request, None)
             self.request.sendall(response)
 
