@@ -11,6 +11,8 @@ function initWS() {
         const messageType = message.messageType
         if(messageType === 'chatMessage'){
             addMessageToChat(message);
+        }else if(messageType === 'userList'){
+            addMessageToUserList(message);
         }else{
             // send message to WebRTC
             processMessageAsWebRTC(message, messageType);
@@ -40,6 +42,12 @@ function chatMessageHTML(messageJSON) {
     return messageHTML;
 }
 
+function userlistHTML(messageJSON) {
+    const userList = messageJSON.message;
+    let messageHTML = "<br>" + userList + "<br>";
+    return messageHTML;
+}
+
 function clearChat() {
     const chatMessages = document.getElementById("chat-messages");
     chatMessages.innerHTML = "";
@@ -50,6 +58,13 @@ function addMessageToChat(messageJSON) {
     chatMessages.innerHTML += chatMessageHTML(messageJSON);
     chatMessages.scrollIntoView(false);
     chatMessages.scrollTop = chatMessages.scrollHeight - chatMessages.clientHeight;
+}
+
+function addMessageToUserList(message_userlist_JSON) {
+    const username_list = document.getElementById("live-user-list");
+    username_list.innerHTML = userlistHTML(message_userlist_JSON);
+    username_list.scrollIntoView(false);
+    username_list.scrollTop = username_list.scrollHeight - username_list.clientHeight;
 }
 
 function sendChat() {

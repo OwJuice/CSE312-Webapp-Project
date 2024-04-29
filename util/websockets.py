@@ -94,6 +94,12 @@ def extract_payload_message(payload):
     message = json_data.get('message', '')
     return message
 
+def extract_payload_type(payload):
+    json_string = payload.decode()
+    json_data = json.loads(json_string) #Our data is only from one frame
+    messageType = json_data.get('messageType', '')
+    return messageType
+
 # recieve_bytes takes a socket as a parameter to recv bytes from the socket
 def recieve_bytes(socket):
     recieved_data = bytearray(socket.request.recv(2))

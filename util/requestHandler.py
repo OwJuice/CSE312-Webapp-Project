@@ -533,6 +533,7 @@ def server_multipart_form(request:Request):
 #    #buffer for current frame *always* even if fin bit is 0, as fin and buffering NOT mutually exclusive
 #    #----------------------#
 socket_set = set()
+user_set = set() #Live list/set of usernames
 def server_websocket(request:Request, socket):
     print("1--- WE HAVE BEEN ROUTED TO WEBSOCKET FUNCTION")
 
@@ -548,8 +549,30 @@ def server_websocket(request:Request, socket):
 
     socket.request.sendall(("HTTP/1.1 101 Switching Protocols\r\nX-Content-Type-Options: nosniff\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: 0\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Accept: " + accept_key + "\r\n\r\n").encode())
     print("4--- WE SENT AN UPGRADE RESPONSE")
-    #add socket to a list of websocket connections, maybe a dictionary associated socket -> username (from cookies)
+    #add socket to a list of websocket connections
     socket_set.add(socket)
+
+    #If user is logged in, then add their username to live user list
+    if username != "Guest":
+        user_set.add(username)
+    
+    #Send live username list
+    user_list = list(user_set)
+
+    message_username_dict = {
+        'messageType': 'userList',
+        'message': user_list,
+    }
+    
+    # Convert the dictionary into a JSON string
+    username_json_string = json.dumps(message_username_dict)
+    
+    # Encode the JSON string into bytes using UTF-8 encoding
+    username_payload = username_json_string.encode('utf-8')
+    username_frame_response = websockets.generate_ws_frame(username_payload)
+
+    for websocket_connection in socket_set:
+        websocket_connection.request.sendall(username_frame_response)
 
     # Variable containing the running message if we have continuation frames
     running_message = ""
@@ -560,6 +583,24 @@ def server_websocket(request:Request, socket):
         received_data = websockets.recieve_bytes(socket) # This gets exactly one frame's data, meaning we don't have to buffer or have extra bytes from back to back
         if received_data is None:
             socket_set.discard(socket)
+            # If user is logged in, then get rid of their name from live list of usernames and send this updated username list to everyone
+            if username != "Guest":
+                user_set.discard(username)
+                user_list = list(user_set)
+                message_username_dict = {
+                    'messageType': 'userList',
+                    'message': user_list,
+                }
+                
+                # Convert the dictionary into a JSON string
+                username_json_string = json.dumps(message_username_dict)
+                
+                # Encode the JSON string into bytes using UTF-8 encoding
+                username_payload = username_json_string.encode('utf-8')
+                username_frame_response = websockets.generate_ws_frame(username_payload)
+
+                for websocket_connection in socket_set:
+                    websocket_connection.request.sendall(username_frame_response)
             break
         else:
             parsed_frame_data = websockets.parse_ws_frame(received_data)
